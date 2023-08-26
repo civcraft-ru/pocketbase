@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v5"
-	"github.com/pocketbase/pocketbase/apis"
-	"github.com/pocketbase/pocketbase/core"
+	"github.com/civcraft-ru/pocketbase/apis"
+	"github.com/civcraft-ru/pocketbase/core"
 )
 
 // ApiScenario defines a single api request test case/scenario.
@@ -57,7 +57,7 @@ func (scenario *ApiScenario) test(t *testing.T) {
 	var testAppErr error
 	if scenario.TestAppFactory != nil {
 		// @todo consider passing the testing instance to the factory and maybe remove the error from the declaration
-		// (see https://github.com/pocketbase/pocketbase/discussions/3025)
+		// (see https://github.com/civcraft-ru/pocketbase/discussions/3025)
 		testApp, testAppErr = scenario.TestAppFactory()
 	} else {
 		testApp, testAppErr = NewTestApp()

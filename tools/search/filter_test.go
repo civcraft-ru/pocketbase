@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/tools/search"
+	"github.com/civcraft-ru/pocketbase/tools/search"
 )
 
 func TestFilterDataBuildExpr(t *testing.T) {

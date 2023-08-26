@@ -4,12 +4,12 @@ import (
 	"html/template"
 	"net/mail"
 
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/mails/templates"
-	"github.com/pocketbase/pocketbase/models"
-	"github.com/pocketbase/pocketbase/models/settings"
-	"github.com/pocketbase/pocketbase/tokens"
-	"github.com/pocketbase/pocketbase/tools/mailer"
+	"github.com/civcraft-ru/pocketbase/core"
+	"github.com/civcraft-ru/pocketbase/mails/templates"
+	"github.com/civcraft-ru/pocketbase/models"
+	"github.com/civcraft-ru/pocketbase/models/settings"
+	"github.com/civcraft-ru/pocketbase/tokens"
+	"github.com/civcraft-ru/pocketbase/tools/mailer"
 )
 
 // SendRecordPasswordReset sends a password reset request email to the specified user.

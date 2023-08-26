@@ -27,10 +27,10 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/core"
-	m "github.com/pocketbase/pocketbase/migrations"
-	"github.com/pocketbase/pocketbase/plugins/jsvm/internal/types/generated"
-	"github.com/pocketbase/pocketbase/tools/template"
+	"github.com/civcraft-ru/pocketbase/core"
+	m "github.com/civcraft-ru/pocketbase/migrations"
+	"github.com/civcraft-ru/pocketbase/plugins/jsvm/internal/types/generated"
+	"github.com/civcraft-ru/pocketbase/tools/template"
 )
 
 const (

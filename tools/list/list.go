@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pocketbase/pocketbase/tools/store"
+	"github.com/civcraft-ru/pocketbase/tools/store"
 	"github.com/spf13/cast"
 )
 

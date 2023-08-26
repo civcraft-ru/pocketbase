@@ -23,11 +23,11 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/migrations"
-	"github.com/pocketbase/pocketbase/models"
-	"github.com/pocketbase/pocketbase/tools/inflector"
-	"github.com/pocketbase/pocketbase/tools/migrate"
+	"github.com/civcraft-ru/pocketbase/core"
+	"github.com/civcraft-ru/pocketbase/migrations"
+	"github.com/civcraft-ru/pocketbase/models"
+	"github.com/civcraft-ru/pocketbase/tools/inflector"
+	"github.com/civcraft-ru/pocketbase/tools/migrate"
 	"github.com/spf13/cobra"
 )
 

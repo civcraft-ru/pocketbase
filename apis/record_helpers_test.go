@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v5"
-	"github.com/pocketbase/pocketbase/apis"
-	"github.com/pocketbase/pocketbase/models"
-	"github.com/pocketbase/pocketbase/tests"
+	"github.com/civcraft-ru/pocketbase/apis"
+	"github.com/civcraft-ru/pocketbase/models"
+	"github.com/civcraft-ru/pocketbase/tests"
 )
 
 func TestRequestInfo(t *testing.T) {

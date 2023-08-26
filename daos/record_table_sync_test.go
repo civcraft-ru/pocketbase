@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/models"
-	"github.com/pocketbase/pocketbase/models/schema"
-	"github.com/pocketbase/pocketbase/tests"
-	"github.com/pocketbase/pocketbase/tools/list"
-	"github.com/pocketbase/pocketbase/tools/types"
+	"github.com/civcraft-ru/pocketbase/models"
+	"github.com/civcraft-ru/pocketbase/models/schema"
+	"github.com/civcraft-ru/pocketbase/tests"
+	"github.com/civcraft-ru/pocketbase/tools/list"
+	"github.com/civcraft-ru/pocketbase/tools/types"
 )
 
 func TestSyncRecordTableSchema(t *testing.T) {

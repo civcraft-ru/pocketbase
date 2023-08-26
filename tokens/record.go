@@ -4,9 +4,9 @@ import (
 	"errors"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/models"
-	"github.com/pocketbase/pocketbase/tools/security"
+	"github.com/civcraft-ru/pocketbase/core"
+	"github.com/civcraft-ru/pocketbase/models"
+	"github.com/civcraft-ru/pocketbase/tools/security"
 )
 
 // NewRecordAuthToken generates and returns a new auth record authentication token.

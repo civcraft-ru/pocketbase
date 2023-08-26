@@ -2,8 +2,8 @@
 package models
 
 import (
-	"github.com/pocketbase/pocketbase/tools/security"
-	"github.com/pocketbase/pocketbase/tools/types"
+	"github.com/civcraft-ru/pocketbase/tools/security"
+	"github.com/civcraft-ru/pocketbase/tools/types"
 )
 
 const (

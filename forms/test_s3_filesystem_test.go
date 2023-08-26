@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/pocketbase/pocketbase/forms"
-	"github.com/pocketbase/pocketbase/tests"
+	"github.com/civcraft-ru/pocketbase/forms"
+	"github.com/civcraft-ru/pocketbase/tests"
 )
 
 func TestS3FilesystemValidate(t *testing.T) {

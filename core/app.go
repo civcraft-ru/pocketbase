@@ -7,13 +7,13 @@ import (
 	"context"
 
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/daos"
-	"github.com/pocketbase/pocketbase/models/settings"
-	"github.com/pocketbase/pocketbase/tools/filesystem"
-	"github.com/pocketbase/pocketbase/tools/hook"
-	"github.com/pocketbase/pocketbase/tools/mailer"
-	"github.com/pocketbase/pocketbase/tools/store"
-	"github.com/pocketbase/pocketbase/tools/subscriptions"
+	"github.com/civcraft-ru/pocketbase/daos"
+	"github.com/civcraft-ru/pocketbase/models/settings"
+	"github.com/civcraft-ru/pocketbase/tools/filesystem"
+	"github.com/civcraft-ru/pocketbase/tools/hook"
+	"github.com/civcraft-ru/pocketbase/tools/mailer"
+	"github.com/civcraft-ru/pocketbase/tools/store"
+	"github.com/civcraft-ru/pocketbase/tools/subscriptions"
 )
 
 // App defines the main PocketBase app interface.

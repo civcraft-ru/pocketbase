@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v5"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/models"
-	"github.com/pocketbase/pocketbase/tokens"
-	"github.com/pocketbase/pocketbase/tools/list"
-	"github.com/pocketbase/pocketbase/tools/routine"
-	"github.com/pocketbase/pocketbase/tools/security"
-	"github.com/pocketbase/pocketbase/tools/types"
+	"github.com/civcraft-ru/pocketbase/core"
+	"github.com/civcraft-ru/pocketbase/models"
+	"github.com/civcraft-ru/pocketbase/tokens"
+	"github.com/civcraft-ru/pocketbase/tools/list"
+	"github.com/civcraft-ru/pocketbase/tools/routine"
+	"github.com/civcraft-ru/pocketbase/tools/security"
+	"github.com/civcraft-ru/pocketbase/tools/types"
 	"github.com/spf13/cast"
 )
 

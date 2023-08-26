@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/apis"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/plugins/ghupdate"
-	"github.com/pocketbase/pocketbase/plugins/jsvm"
-	"github.com/pocketbase/pocketbase/plugins/migratecmd"
+	"github.com/civcraft-ru/pocketbase"
+	"github.com/civcraft-ru/pocketbase/apis"
+	"github.com/civcraft-ru/pocketbase/core"
+	"github.com/civcraft-ru/pocketbase/plugins/ghupdate"
+	"github.com/civcraft-ru/pocketbase/plugins/jsvm"
+	"github.com/civcraft-ru/pocketbase/plugins/migratecmd"
 )
 
 func main() {

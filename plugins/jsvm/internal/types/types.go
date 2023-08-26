@@ -8,9 +8,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/plugins/jsvm"
-	"github.com/pocketbase/pocketbase/tools/list"
+	"github.com/civcraft-ru/pocketbase/core"
+	"github.com/civcraft-ru/pocketbase/plugins/jsvm"
+	"github.com/civcraft-ru/pocketbase/tools/list"
 	"github.com/pocketbase/tygoja"
 )
 
@@ -904,13 +904,13 @@ func main() {
 		Packages: map[string][]string{
 			"github.com/go-ozzo/ozzo-validation/v4":             {"Error"},
 			"github.com/pocketbase/dbx":                         {"*"},
-			"github.com/pocketbase/pocketbase/tools/security":   {"*"},
-			"github.com/pocketbase/pocketbase/tools/filesystem": {"*"},
-			"github.com/pocketbase/pocketbase/tools/template":   {"*"},
-			"github.com/pocketbase/pocketbase/tokens":           {"*"},
-			"github.com/pocketbase/pocketbase/apis":             {"*"},
-			"github.com/pocketbase/pocketbase/forms":            {"*"},
-			"github.com/pocketbase/pocketbase":                  {"*"},
+			"github.com/civcraft-ru/pocketbase/tools/security":   {"*"},
+			"github.com/civcraft-ru/pocketbase/tools/filesystem": {"*"},
+			"github.com/civcraft-ru/pocketbase/tools/template":   {"*"},
+			"github.com/civcraft-ru/pocketbase/tokens":           {"*"},
+			"github.com/civcraft-ru/pocketbase/apis":             {"*"},
+			"github.com/civcraft-ru/pocketbase/forms":            {"*"},
+			"github.com/civcraft-ru/pocketbase":                  {"*"},
 			"path/filepath":                                     {"*"},
 			"os":                                                {"*"},
 			"os/exec":                                           {"Command"},

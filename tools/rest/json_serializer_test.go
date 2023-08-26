@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v5"
-	"github.com/pocketbase/pocketbase/tools/rest"
-	"github.com/pocketbase/pocketbase/tools/search"
+	"github.com/civcraft-ru/pocketbase/tools/rest"
+	"github.com/civcraft-ru/pocketbase/tools/search"
 )
 
 func TestSerialize(t *testing.T) {

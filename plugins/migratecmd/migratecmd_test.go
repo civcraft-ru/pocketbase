@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pocketbase/pocketbase/daos"
-	"github.com/pocketbase/pocketbase/models"
-	"github.com/pocketbase/pocketbase/models/schema"
-	"github.com/pocketbase/pocketbase/plugins/migratecmd"
-	"github.com/pocketbase/pocketbase/tests"
-	"github.com/pocketbase/pocketbase/tools/types"
+	"github.com/civcraft-ru/pocketbase/daos"
+	"github.com/civcraft-ru/pocketbase/models"
+	"github.com/civcraft-ru/pocketbase/models/schema"
+	"github.com/civcraft-ru/pocketbase/plugins/migratecmd"
+	"github.com/civcraft-ru/pocketbase/tests"
+	"github.com/civcraft-ru/pocketbase/tools/types"
 )
 
 func TestAutomigrateCollectionCreate(t *testing.T) {
@@ -70,9 +70,9 @@ import (
 	"encoding/json"
 
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/daos"
-	m "github.com/pocketbase/pocketbase/migrations"
-	"github.com/pocketbase/pocketbase/models"
+	"github.com/civcraft-ru/pocketbase/daos"
+	m "github.com/civcraft-ru/pocketbase/migrations"
+	"github.com/civcraft-ru/pocketbase/models"
 )
 
 func init() {
@@ -243,9 +243,9 @@ import (
 	"encoding/json"
 
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/daos"
-	m "github.com/pocketbase/pocketbase/migrations"
-	"github.com/pocketbase/pocketbase/models"
+	"github.com/civcraft-ru/pocketbase/daos"
+	m "github.com/civcraft-ru/pocketbase/migrations"
+	"github.com/civcraft-ru/pocketbase/models"
 )
 
 func init() {
@@ -488,10 +488,10 @@ import (
 	"encoding/json"
 
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/daos"
-	m "github.com/pocketbase/pocketbase/migrations"
-	"github.com/pocketbase/pocketbase/models/schema"
-	"github.com/pocketbase/pocketbase/tools/types"
+	"github.com/civcraft-ru/pocketbase/daos"
+	m "github.com/civcraft-ru/pocketbase/migrations"
+	"github.com/civcraft-ru/pocketbase/models/schema"
+	"github.com/civcraft-ru/pocketbase/tools/types"
 )
 
 func init() {

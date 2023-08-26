@@ -2,7 +2,7 @@ package logs
 
 import (
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/tools/migrate"
+	"github.com/civcraft-ru/pocketbase/tools/migrate"
 )
 
 var LogsMigrations migrate.MigrationsList

@@ -7,16 +7,16 @@ import (
 	"strconv"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/daos"
-	"github.com/pocketbase/pocketbase/forms/validators"
-	"github.com/pocketbase/pocketbase/models"
-	"github.com/pocketbase/pocketbase/models/schema"
-	"github.com/pocketbase/pocketbase/resolvers"
-	"github.com/pocketbase/pocketbase/tools/dbutils"
-	"github.com/pocketbase/pocketbase/tools/list"
-	"github.com/pocketbase/pocketbase/tools/search"
-	"github.com/pocketbase/pocketbase/tools/types"
+	"github.com/civcraft-ru/pocketbase/core"
+	"github.com/civcraft-ru/pocketbase/daos"
+	"github.com/civcraft-ru/pocketbase/forms/validators"
+	"github.com/civcraft-ru/pocketbase/models"
+	"github.com/civcraft-ru/pocketbase/models/schema"
+	"github.com/civcraft-ru/pocketbase/resolvers"
+	"github.com/civcraft-ru/pocketbase/tools/dbutils"
+	"github.com/civcraft-ru/pocketbase/tools/list"
+	"github.com/civcraft-ru/pocketbase/tools/search"
+	"github.com/civcraft-ru/pocketbase/tools/types"
 )
 
 var collectionNameRegex = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_]*$`)
@@ -283,7 +283,7 @@ func (form *CollectionUpsert) checkRelationFields(value any) error {
 		}
 
 		// allow only views to have relations to other views
-		// (see https://github.com/pocketbase/pocketbase/issues/3000)
+		// (see https://github.com/civcraft-ru/pocketbase/issues/3000)
 		if form.Type != models.CollectionTypeView && relCollection.IsView() {
 			return validation.Errors{fmt.Sprint(i): validation.Errors{
 				"options": validation.Errors{

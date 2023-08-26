@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/pocketbase/pocketbase/models/settings"
-	"github.com/pocketbase/pocketbase/tools/auth"
-	"github.com/pocketbase/pocketbase/tools/mailer"
+	"github.com/civcraft-ru/pocketbase/models/settings"
+	"github.com/civcraft-ru/pocketbase/tools/auth"
+	"github.com/civcraft-ru/pocketbase/tools/mailer"
 )
 
 func TestSettingsValidate(t *testing.T) {

@@ -3,7 +3,7 @@ package security_test
 import (
 	"testing"
 
-	"github.com/pocketbase/pocketbase/tools/security"
+	"github.com/civcraft-ru/pocketbase/tools/security"
 )
 
 func TestS256Challenge(t *testing.T) {

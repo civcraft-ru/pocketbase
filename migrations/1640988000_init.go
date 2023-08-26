@@ -6,12 +6,12 @@ import (
 	"runtime"
 
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/daos"
-	"github.com/pocketbase/pocketbase/models"
-	"github.com/pocketbase/pocketbase/models/schema"
-	"github.com/pocketbase/pocketbase/models/settings"
-	"github.com/pocketbase/pocketbase/tools/migrate"
-	"github.com/pocketbase/pocketbase/tools/types"
+	"github.com/civcraft-ru/pocketbase/daos"
+	"github.com/civcraft-ru/pocketbase/models"
+	"github.com/civcraft-ru/pocketbase/models/schema"
+	"github.com/civcraft-ru/pocketbase/models/settings"
+	"github.com/civcraft-ru/pocketbase/tools/migrate"
+	"github.com/civcraft-ru/pocketbase/tools/types"
 )
 
 var AppMigrations migrate.MigrationsList

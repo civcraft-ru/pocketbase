@@ -7,9 +7,9 @@ import (
 
 	"github.com/ganigeorgiev/fexpr"
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/tools/security"
-	"github.com/pocketbase/pocketbase/tools/store"
-	"github.com/pocketbase/pocketbase/tools/types"
+	"github.com/civcraft-ru/pocketbase/tools/security"
+	"github.com/civcraft-ru/pocketbase/tools/store"
+	"github.com/civcraft-ru/pocketbase/tools/types"
 	"github.com/spf13/cast"
 )
 
