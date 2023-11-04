@@ -5,12 +5,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/civcraft-ru/dbx"
 	"github.com/civcraft-ru/pocketbase/models"
 	"github.com/civcraft-ru/pocketbase/models/schema"
 	"github.com/civcraft-ru/pocketbase/tools/dbutils"
 	"github.com/civcraft-ru/pocketbase/tools/security"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/pocketbase/dbx"
 )
 
 // SyncRecordTableSchema compares the two provided collections

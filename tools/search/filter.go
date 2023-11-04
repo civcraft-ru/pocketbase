@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/civcraft-ru/dbx"
 	"github.com/civcraft-ru/pocketbase/tools/security"
 	"github.com/civcraft-ru/pocketbase/tools/store"
 	"github.com/ganigeorgiev/fexpr"
+	"github.com/pocketbase/dbx"
 	"github.com/spf13/cast"
 )
 

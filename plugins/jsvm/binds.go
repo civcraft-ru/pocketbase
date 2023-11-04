@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/civcraft-ru/dbx"
 	"github.com/civcraft-ru/pocketbase/apis"
 	"github.com/civcraft-ru/pocketbase/core"
 	"github.com/civcraft-ru/pocketbase/daos"
@@ -37,6 +36,7 @@ import (
 	"github.com/dop251/goja"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/labstack/echo/v5"
+	"github.com/pocketbase/dbx"
 	"github.com/spf13/cobra"
 )
 

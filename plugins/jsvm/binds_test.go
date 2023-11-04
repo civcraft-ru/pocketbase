@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/civcraft-ru/dbx"
 	"github.com/civcraft-ru/pocketbase/apis"
 	"github.com/civcraft-ru/pocketbase/core"
 	"github.com/civcraft-ru/pocketbase/daos"
@@ -24,6 +23,7 @@ import (
 	"github.com/civcraft-ru/pocketbase/tools/security"
 	"github.com/dop251/goja"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/pocketbase/dbx"
 	"github.com/spf13/cast"
 )
 
