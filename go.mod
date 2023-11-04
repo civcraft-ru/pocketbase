@@ -20,7 +20,6 @@ require (
 	github.com/labstack/echo/v5 v5.0.0-20230722203903-ec5b858dab61
 	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/pocketbase/dbx v1.10.1
-	github.com/civcraft-ru/pocketbase v0.19.2
 	github.com/pocketbase/tygoja v0.0.0-20231028133025-25a94364de58
 	github.com/spf13/cast v1.5.1
 	github.com/spf13/cobra v1.7.0

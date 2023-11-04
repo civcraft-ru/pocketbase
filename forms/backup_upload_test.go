@@ -5,10 +5,10 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/civcraft-ru/pocketbase/forms"
+	"github.com/civcraft-ru/pocketbase/tests"
+	"github.com/civcraft-ru/pocketbase/tools/filesystem"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/pocketbase/pocketbase/forms"
-	"github.com/pocketbase/pocketbase/tests"
-	"github.com/pocketbase/pocketbase/tools/filesystem"
 )
 
 func TestBackupUploadValidateAndSubmit(t *testing.T) {
