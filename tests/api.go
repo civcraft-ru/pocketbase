@@ -6,14 +6,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/labstack/echo/v5"
 	"github.com/civcraft-ru/pocketbase/apis"
 	"github.com/civcraft-ru/pocketbase/core"
+	"github.com/labstack/echo/v5"
 )
 
 // ApiScenario defines a single api request test case/scenario.
@@ -37,9 +38,9 @@ type ApiScenario struct {
 
 	// test hooks
 	// ---
-	TestAppFactory func() (*TestApp, error)
+	TestAppFactory func(t *testing.T) *TestApp
 	BeforeTestFunc func(t *testing.T, app *TestApp, e *echo.Echo)
-	AfterTestFunc  func(t *testing.T, app *TestApp, e *echo.Echo)
+	AfterTestFunc  func(t *testing.T, app *TestApp, res *http.Response)
 }
 
 // Test executes the test scenario.
@@ -54,16 +55,17 @@ func (scenario *ApiScenario) Test(t *testing.T) {
 
 func (scenario *ApiScenario) test(t *testing.T) {
 	var testApp *TestApp
-	var testAppErr error
 	if scenario.TestAppFactory != nil {
-		// @todo consider passing the testing instance to the factory and maybe remove the error from the declaration
-		// (see https://github.com/civcraft-ru/pocketbase/discussions/3025)
-		testApp, testAppErr = scenario.TestAppFactory()
+		testApp = scenario.TestAppFactory(t)
+		if testApp == nil {
+			t.Fatal("TestAppFactory must return a non-nill app instance")
+		}
 	} else {
+		var testAppErr error
 		testApp, testAppErr = NewTestApp()
-	}
-	if testAppErr != nil {
-		t.Fatalf("Failed to initialize the test app instance: %v", testAppErr)
+		if testAppErr != nil {
+			t.Fatalf("Failed to initialize the test app instance: %v", testAppErr)
+		}
 	}
 	defer testApp.Cleanup()
 
@@ -172,8 +174,7 @@ func (scenario *ApiScenario) test(t *testing.T) {
 		}
 	}
 
-	// @todo consider adding the response body to the AfterTestFunc args
 	if scenario.AfterTestFunc != nil {
-		scenario.AfterTestFunc(t, testApp, e)
+		scenario.AfterTestFunc(t, testApp, res)
 	}
 }

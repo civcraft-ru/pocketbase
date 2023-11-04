@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/labstack/echo/v5"
-	"github.com/pocketbase/dbx"
 	"github.com/civcraft-ru/pocketbase/core"
 	"github.com/civcraft-ru/pocketbase/forms"
 	"github.com/civcraft-ru/pocketbase/models"
@@ -18,6 +16,8 @@ import (
 	"github.com/civcraft-ru/pocketbase/tools/routine"
 	"github.com/civcraft-ru/pocketbase/tools/search"
 	"github.com/civcraft-ru/pocketbase/tools/subscriptions"
+	"github.com/labstack/echo/v5"
+	"github.com/pocketbase/dbx"
 )
 
 // bindRealtimeApi registers the realtime api endpoints.
@@ -56,10 +56,9 @@ func (api *realtimeApi) connect(c echo.Context) error {
 		api.app.SubscriptionsBroker().Unregister(client.Id())
 	}()
 
-	c.Response().Header().Set("Content-Type", "text/event-stream; charset=UTF-8")
+	c.Response().Header().Set("Content-Type", "text/event-stream")
 	c.Response().Header().Set("Cache-Control", "no-store")
-	c.Response().Header().Set("Connection", "keep-alive")
-	// https://github.com/civcraft-ru/pocketbase/discussions/480#discussioncomment-3657640
+	// https://github.com/pocketbase/pocketbase/discussions/480#discussioncomment-3657640
 	// https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering
 	c.Response().Header().Set("X-Accel-Buffering", "no")
 
@@ -371,8 +370,8 @@ func (api *realtimeApi) canAccessRecord(client subscriptions.Client, record *mod
 }
 
 type recordData struct {
-	Action string         `json:"action"`
 	Record *models.Record `json:"record"`
+	Action string         `json:"action"`
 }
 
 func (api *realtimeApi) broadcastRecord(action string, record *models.Record, dryCache bool) error {
