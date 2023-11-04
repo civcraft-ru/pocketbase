@@ -39,7 +39,7 @@ your own custom app specific business logic and still have a single portable exe
 
 ```sh
 # go 1.19+
-go get github.com/pocketbase/pocketbase
+go get github.com/civcraft-ru/pocketbase
 ```
 
 ### Example

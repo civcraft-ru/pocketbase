@@ -1,22 +1,22 @@
 ## v0.19.2
 
-- Updated the JSVM generated types ([#3627](https://github.com/pocketbase/pocketbase/issues/3627), [#3662](https://github.com/pocketbase/pocketbase/issues/3662)).
+- Updated the JSVM generated types ([#3627](https://github.com/civcraft-ru/pocketbase/issues/3627), [#3662](https://github.com/civcraft-ru/pocketbase/issues/3662)).
 
 
 ## v0.19.1
 
 - Fixed `tokenizer.Scan()/ScanAll()` to ignore the separators from the default trim cutset.
   An option to return also the empty found tokens was also added via `Tokenizer.KeepEmptyTokens(true)`.
-  _This should fix the parsing of whitespace charactes around view query column names when no quotes are used ([#3616](https://github.com/pocketbase/pocketbase/discussions/3616#discussioncomment-7398564))._
+  _This should fix the parsing of whitespace charactes around view query column names when no quotes are used ([#3616](https://github.com/civcraft-ru/pocketbase/discussions/3616#discussioncomment-7398564))._
 
 - Fixed the `:excerpt(max, withEllipsis?)` `field` query param modifier to properly add space to the generated text fragment after block tags.
 
 
 ## v0.19.0
 
-- Added Patreon OAuth2 provider ([#3323](https://github.com/pocketbase/pocketbase/pull/3323); thanks @ghostdevv).
+- Added Patreon OAuth2 provider ([#3323](https://github.com/civcraft-ru/pocketbase/pull/3323); thanks @ghostdevv).
 
-- Added mailcow OAuth2 provider ([#3364](https://github.com/pocketbase/pocketbase/pull/3364); thanks @thisni1s).
+- Added mailcow OAuth2 provider ([#3364](https://github.com/civcraft-ru/pocketbase/pull/3364); thanks @thisni1s).
 
 - Added support for `:excerpt(max, withEllipsis?)` `fields` modifier that will return a short plain text version of any string value (html tags are stripped).
     This could be used to minimize the downloaded json data when listing records with large `editor` html values.
@@ -27,9 +27,9 @@
     ```
 
 - Several Admin UI improvements:
-  - Count the total records separately to speed up the query execution for large datasets ([#3344](https://github.com/pocketbase/pocketbase/issues/3344)).
-  - Enclosed the listing scrolling area within the table so that the horizontal scrollbar and table header are always reachable ([#2505](https://github.com/pocketbase/pocketbase/issues/2505)).
-  - Allowed opening the record preview/update form via direct URL ([#2682](https://github.com/pocketbase/pocketbase/discussions/2682)).
+  - Count the total records separately to speed up the query execution for large datasets ([#3344](https://github.com/civcraft-ru/pocketbase/issues/3344)).
+  - Enclosed the listing scrolling area within the table so that the horizontal scrollbar and table header are always reachable ([#2505](https://github.com/civcraft-ru/pocketbase/issues/2505)).
+  - Allowed opening the record preview/update form via direct URL ([#2682](https://github.com/civcraft-ru/pocketbase/discussions/2682)).
   - Reintroduced the local `date` field tooltip on hover.
   - Speed up the listing loading times for records with large `editor` field values by initially fetching only a partial of the records data (the complete record data is loaded on record preview/update).
   - Added "Media library" (collection images picker) support for the TinyMCE `editor` field.
@@ -38,7 +38,7 @@
   - More clear "Nonempty" field label style.
   - Removed the legacy `.woff` and `.ttf` fonts and keep only `.woff2`.
 
-- Removed the explicit `Content-Type` charset from the realtime response due to compatibility issues with IIS ([#3461](https://github.com/pocketbase/pocketbase/issues/3461)).
+- Removed the explicit `Content-Type` charset from the realtime response due to compatibility issues with IIS ([#3461](https://github.com/civcraft-ru/pocketbase/issues/3461)).
   _The `Connection:keep-alive` realtime response header was also removed as it is not really used with HTTP2 anyway._
 
 - Added new JSVM bindings:
@@ -51,12 +51,12 @@
 
 ## v0.18.10
 
-- Added global `raw` template function to allow outputting raw/verbatim HTML content in the JSVM templates ([#3476](https://github.com/pocketbase/pocketbase/discussions/3476)).
+- Added global `raw` template function to allow outputting raw/verbatim HTML content in the JSVM templates ([#3476](https://github.com/civcraft-ru/pocketbase/discussions/3476)).
   ```
   {{.description|raw}}
   ```
 
-- Trimmed view query semicolon and allowed single quotes for column aliases ([#3450](https://github.com/pocketbase/pocketbase/issues/3450#issuecomment-1748044641)).
+- Trimmed view query semicolon and allowed single quotes for column aliases ([#3450](https://github.com/civcraft-ru/pocketbase/issues/3450#issuecomment-1748044641)).
   _Single quotes are usually [not a valid identifier quote characters](https://www.sqlite.org/lang_keywords.html), but for resilience and compatibility reasons SQLite allows them in some contexts where only an identifier is expected._
 
 - Bumped the GitHub action to use [min Go 1.21.2](https://github.com/golang/go/issues?q=milestone%3AGo1.21.2) (_the fixed issues are not critical as they are mostly related to the compiler/build tools_).
@@ -64,7 +64,7 @@
 
 ## v0.18.9
 
-- Fixed empty thumbs directories not getting deleted on Windows after deleting a record img file ([#3382](https://github.com/pocketbase/pocketbase/issues/3382)).
+- Fixed empty thumbs directories not getting deleted on Windows after deleting a record img file ([#3382](https://github.com/civcraft-ru/pocketbase/issues/3382)).
 
 - Updated the generated JSVM typings to silent the TS warnings when trying to access a field/method in a Go->TS interface.
 
@@ -76,7 +76,7 @@
 
 ## v0.18.7
 
-- Fixed JS error in the Admin UI when listing records with invalid `relation` field value ([#3372](https://github.com/pocketbase/pocketbase/issues/3372)).
+- Fixed JS error in the Admin UI when listing records with invalid `relation` field value ([#3372](https://github.com/civcraft-ru/pocketbase/issues/3372)).
   _This could happen usually only during custom SQL import scripts or when directly modifying the record field value without data validations._
 
 - Updated Go deps and the generated JSVM types.
@@ -84,7 +84,7 @@
 
 ## v0.18.6
 
-- Return the response headers and cookies in the `$http.send()` result ([#3310](https://github.com/pocketbase/pocketbase/discussions/3310)).
+- Return the response headers and cookies in the `$http.send()` result ([#3310](https://github.com/civcraft-ru/pocketbase/discussions/3310)).
 
 - Added more descriptive internal error message for missing user/admin email on password reset requests.
 
@@ -98,23 +98,23 @@
 
 ## v0.18.4
 
-- Added escape character (`\`) support in the Admin UI to allow using `select` field values with comma ([#2197](https://github.com/pocketbase/pocketbase/discussions/2197)).
+- Added escape character (`\`) support in the Admin UI to allow using `select` field values with comma ([#2197](https://github.com/civcraft-ru/pocketbase/discussions/2197)).
 
 
 ## v0.18.3
 
-- Exposed a global JSVM `readerToString(reader)` helper function to allow reading Go `io.Reader` values ([#3273](https://github.com/pocketbase/pocketbase/discussions/3273)).
+- Exposed a global JSVM `readerToString(reader)` helper function to allow reading Go `io.Reader` values ([#3273](https://github.com/civcraft-ru/pocketbase/discussions/3273)).
 
 - Bumped the GitHub action to use [min Go 1.21.1](https://github.com/golang/go/issues?q=milestone%3AGo1.21.1+label%3ACherryPickApproved) for the prebuilt executable since it contains some minor `html/template` and `net/http` security fixes.
 
 
 ## v0.18.2
 
-- Prevent breaking the record form in the Admin UI in case the browser's localStorage quota has been exceeded when uploading or storing large `editor` values ([#3265](https://github.com/pocketbase/pocketbase/issues/3265)).
+- Prevent breaking the record form in the Admin UI in case the browser's localStorage quota has been exceeded when uploading or storing large `editor` values ([#3265](https://github.com/civcraft-ru/pocketbase/issues/3265)).
 
 - Updated docs and missing JSVM typings.
 
-- Exposed additional crypto primitives under the `$security.*` JSVM namespace ([#3273](https://github.com/pocketbase/pocketbase/discussions/3273)):
+- Exposed additional crypto primitives under the `$security.*` JSVM namespace ([#3273](https://github.com/civcraft-ru/pocketbase/discussions/3273)):
   ```js
   // HMAC with SHA256
   $security.hs256("hello", "secret")
@@ -129,37 +129,37 @@
 
 ## v0.18.1
 
-- Excluded the local temp dir from the backups ([#3261](https://github.com/pocketbase/pocketbase/issues/3261)).
+- Excluded the local temp dir from the backups ([#3261](https://github.com/civcraft-ru/pocketbase/issues/3261)).
 
 
 ## v0.18.0
 
-- Simplified the `serve` command to accept domain name(s) as argument to reduce any additional manual hosts setup that sometimes previously was needed when deploying on production ([#3190](https://github.com/pocketbase/pocketbase/discussions/3190)).
+- Simplified the `serve` command to accept domain name(s) as argument to reduce any additional manual hosts setup that sometimes previously was needed when deploying on production ([#3190](https://github.com/civcraft-ru/pocketbase/discussions/3190)).
   ```sh
   ./pocketbase serve yourdomain.com
   ```
 
 - Added `fields` wildcard (`*`) support.
 
-- Added option to upload a backup file from the Admin UI ([#2599](https://github.com/pocketbase/pocketbase/issues/2599)).
+- Added option to upload a backup file from the Admin UI ([#2599](https://github.com/civcraft-ru/pocketbase/issues/2599)).
 
 - Registered a custom Deflate compressor to speedup (_nearly 2-3x_) the backups generation for the sake of a small zip size increase.
   _Based on several local tests, `pb_data` of ~500MB (from which ~350MB+ are several hundred small files) results in a ~280MB zip generated for ~11s (previously it resulted in ~250MB zip but for ~35s)._
 
-- Added the application name as part of the autogenerated backup name for easier identification ([#3066](https://github.com/pocketbase/pocketbase/issues/3066)).
+- Added the application name as part of the autogenerated backup name for easier identification ([#3066](https://github.com/civcraft-ru/pocketbase/issues/3066)).
 
-- Added new `SmtpConfig.LocalName` option to specify a custom domain name (or IP address) for the initial EHLO/HELO exchange ([#3097](https://github.com/pocketbase/pocketbase/discussions/3097)).
+- Added new `SmtpConfig.LocalName` option to specify a custom domain name (or IP address) for the initial EHLO/HELO exchange ([#3097](https://github.com/civcraft-ru/pocketbase/discussions/3097)).
   _This is usually required for verification purposes only by some SMTP providers, such as on-premise [Gmail SMTP-relay](https://support.google.com/a/answer/2956491)._
 
 - Added `NoDecimal` `number` field option.
 
 - `editor` field improvements:
     - Added new "Strip urls domain" option to allow controlling the default TinyMCE urls behavior (_default to `false` for new content_).
-    - Normalized pasted text while still preserving links, lists, tables, etc. formatting ([#3257](https://github.com/pocketbase/pocketbase/issues/3257)).
+    - Normalized pasted text while still preserving links, lists, tables, etc. formatting ([#3257](https://github.com/civcraft-ru/pocketbase/issues/3257)).
 
 - Added option to auto generate admin and auth record passwords from the Admin UI.
 
-- Added JSON validation and syntax highlight for the `json` field in the Admin UI ([#3191](https://github.com/pocketbase/pocketbase/issues/3191)).
+- Added JSON validation and syntax highlight for the `json` field in the Admin UI ([#3191](https://github.com/civcraft-ru/pocketbase/issues/3191)).
 
 - Added datetime filter macros:
   ```
@@ -179,7 +179,7 @@
   @yearEnd    - end of the current year as datetime string
   ```
 
-- Added cron expression macros ([#3132](https://github.com/pocketbase/pocketbase/issues/3132)):
+- Added cron expression macros ([#3132](https://github.com/civcraft-ru/pocketbase/issues/3132)):
   ```
   @yearly   - "0 0 1 1 *"
   @annually - "0 0 1 1 *"
@@ -211,7 +211,7 @@
   })
   ```
 
-- Added JSVM `$mails.*` binds for the corresponding Go [mails package](https://pkg.go.dev/github.com/pocketbase/pocketbase/mails) functions.
+- Added JSVM `$mails.*` binds for the corresponding Go [mails package](https://pkg.go.dev/github.com/civcraft-ru/pocketbase/mails) functions.
 
 - Added JSVM helper crypto primitives under the `$security.*` namespace:
   ```js
@@ -222,9 +222,9 @@
 
 - ⚠️ Deprecated `RelationOptions.DisplayFields` in favor of the new `SchemaField.Presentable` option to avoid the duplication when a single collection is referenced more than once and/or by multiple other collections.
 
-- ⚠️ Fill the `LastVerificationSentAt` and `LastResetSentAt` fields only after a successfull email send ([#3121](https://github.com/pocketbase/pocketbase/issues/3121)).
+- ⚠️ Fill the `LastVerificationSentAt` and `LastResetSentAt` fields only after a successfull email send ([#3121](https://github.com/civcraft-ru/pocketbase/issues/3121)).
 
-- ⚠️ Skip API `fields` json transformations for non 20x responses ([#3176](https://github.com/pocketbase/pocketbase/issues/3176)).
+- ⚠️ Skip API `fields` json transformations for non 20x responses ([#3176](https://github.com/civcraft-ru/pocketbase/issues/3176)).
 
 - ⚠️ Changes to `tests.ApiScenario` struct:
 
@@ -237,7 +237,7 @@
       AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response)
       ```
 
-    - The `ApiScenario.TestAppFactory` now accept the test instance as argument and no longer expect an error as return result ([#3025](https://github.com/pocketbase/pocketbase/discussions/3025#discussioncomment-6592272)).
+    - The `ApiScenario.TestAppFactory` now accept the test instance as argument and no longer expect an error as return result ([#3025](https://github.com/civcraft-ru/pocketbase/discussions/3025#discussioncomment-6592272)).
       ```go
       // old
       TestAppFactory: func() (*tests.TestApp, error)
@@ -1077,7 +1077,7 @@
 
 ## v0.10.3
 
-- ⚠️ Renamed the metadata key `original_filename` to `original-filename` due to an S3 file upload error caused by the underscore character ([#1343](https://github.com/pocketbase/pocketbase/pull/1343); thanks @yuxiang-gao).
+- ⚠️ Renamed the metadata key `original_filename` to `original-filename` due to an S3 file upload error caused by the underscore character ([#1343](https://github.com/civcraft-ru/pocketbase/pull/1343); thanks @yuxiang-gao).
 
 - Fixed request verification docs api url ([#1332](https://github.com/civcraft-ru/pocketbase/pull/1332); thanks @JoyMajumdar2001)
 
