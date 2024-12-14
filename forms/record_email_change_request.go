@@ -1,22 +1,22 @@
 package forms
 
 import (
-	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/go-ozzo/ozzo-validation/v4/is"
-	"github.com/civcraft-ru/pocketbase/core"
-	"github.com/civcraft-ru/pocketbase/daos"
-	"github.com/civcraft-ru/pocketbase/mails"
-	"github.com/civcraft-ru/pocketbase/models"
-	"github.com/civcraft-ru/pocketbase/models/schema"
+    validation "github.com/go-ozzo/ozzo-validation/v4"
+    "github.com/go-ozzo/ozzo-validation/v4/is"
+    "github.com/m2civ/pocketbase/core"
+    "github.com/m2civ/pocketbase/daos"
+    "github.com/m2civ/pocketbase/mails"
+    "github.com/m2civ/pocketbase/models"
+    "github.com/m2civ/pocketbase/models/schema"
 )
 
 // RecordEmailChangeRequest is an auth record email change request form.
 type RecordEmailChangeRequest struct {
-	app    core.App
-	dao    *daos.Dao
-	record *models.Record
+    app    core.App
+    dao    *daos.Dao
+    record *models.Record
 
-	NewEmail string `form:"newEmail" json:"newEmail"`
+    NewEmail string `form:"newEmail" json:"newEmail"`
 }
 
 // NewRecordEmailChangeRequest creates a new [RecordEmailChangeRequest] form
@@ -25,39 +25,39 @@ type RecordEmailChangeRequest struct {
 // If you want to submit the form as part of a transaction,
 // you can change the default Dao via [SetDao()].
 func NewRecordEmailChangeRequest(app core.App, record *models.Record) *RecordEmailChangeRequest {
-	return &RecordEmailChangeRequest{
-		app:    app,
-		dao:    app.Dao(),
-		record: record,
-	}
+    return &RecordEmailChangeRequest{
+        app:    app,
+        dao:    app.Dao(),
+        record: record,
+    }
 }
 
 // SetDao replaces the default form Dao instance with the provided one.
 func (form *RecordEmailChangeRequest) SetDao(dao *daos.Dao) {
-	form.dao = dao
+    form.dao = dao
 }
 
 // Validate makes the form validatable by implementing [validation.Validatable] interface.
 func (form *RecordEmailChangeRequest) Validate() error {
-	return validation.ValidateStruct(form,
-		validation.Field(
-			&form.NewEmail,
-			validation.Required,
-			validation.Length(1, 255),
-			is.EmailFormat,
-			validation.By(form.checkUniqueEmail),
-		),
-	)
+    return validation.ValidateStruct(form,
+        validation.Field(
+            &form.NewEmail,
+            validation.Required,
+            validation.Length(1, 255),
+            is.EmailFormat,
+            validation.By(form.checkUniqueEmail),
+        ),
+    )
 }
 
 func (form *RecordEmailChangeRequest) checkUniqueEmail(value any) error {
-	v, _ := value.(string)
+    v, _ := value.(string)
 
-	if !form.dao.IsRecordValueUnique(form.record.Collection().Id, schema.FieldNameEmail, v) {
-		return validation.NewError("validation_record_email_exists", "User email already exists.")
-	}
+    if !form.dao.IsRecordValueUnique(form.record.Collection().Id, schema.FieldNameEmail, v) {
+        return validation.NewError("validation_record_email_exists", "User email already exists.")
+    }
 
-	return nil
+    return nil
 }
 
 // Submit validates and sends the change email request.
@@ -65,11 +65,11 @@ func (form *RecordEmailChangeRequest) checkUniqueEmail(value any) error {
 // You can optionally provide a list of InterceptorFunc to
 // further modify the form behavior before persisting it.
 func (form *RecordEmailChangeRequest) Submit(interceptors ...InterceptorFunc[*models.Record]) error {
-	if err := form.Validate(); err != nil {
-		return err
-	}
+    if err := form.Validate(); err != nil {
+        return err
+    }
 
-	return runInterceptors(form.record, func(m *models.Record) error {
-		return mails.SendRecordChangeEmail(form.app, m, form.NewEmail)
-	}, interceptors...)
+    return runInterceptors(form.record, func(m *models.Record) error {
+        return mails.SendRecordChangeEmail(form.app, m, form.NewEmail)
+    }, interceptors...)
 }

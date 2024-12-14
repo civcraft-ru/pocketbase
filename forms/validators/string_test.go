@@ -1,30 +1,30 @@
 package validators_test
 
 import (
-	"testing"
+    "testing"
 
-	"github.com/civcraft-ru/pocketbase/forms/validators"
+    "github.com/m2civ/pocketbase/forms/validators"
 )
 
 func TestCompare(t *testing.T) {
-	scenarios := []struct {
-		valA        string
-		valB        string
-		expectError bool
-	}{
-		{"", "", false},
-		{"", "456", true},
-		{"123", "", true},
-		{"123", "456", true},
-		{"123", "123", false},
-	}
+    scenarios := []struct {
+        valA        string
+        valB        string
+        expectError bool
+    }{
+        {"", "", false},
+        {"", "456", true},
+        {"123", "", true},
+        {"123", "456", true},
+        {"123", "123", false},
+    }
 
-	for i, s := range scenarios {
-		err := validators.Compare(s.valA)(s.valB)
+    for i, s := range scenarios {
+        err := validators.Compare(s.valA)(s.valB)
 
-		hasErr := err != nil
-		if hasErr != s.expectError {
-			t.Errorf("(%d) Expected hasErr to be %v, got %v (%v)", i, s.expectError, hasErr, err)
-		}
-	}
+        hasErr := err != nil
+        if hasErr != s.expectError {
+            t.Errorf("(%d) Expected hasErr to be %v, got %v (%v)", i, s.expectError, hasErr, err)
+        }
+    }
 }

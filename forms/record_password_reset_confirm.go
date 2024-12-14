@@ -1,22 +1,22 @@
 package forms
 
 import (
-	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/civcraft-ru/pocketbase/core"
-	"github.com/civcraft-ru/pocketbase/daos"
-	"github.com/civcraft-ru/pocketbase/forms/validators"
-	"github.com/civcraft-ru/pocketbase/models"
+    validation "github.com/go-ozzo/ozzo-validation/v4"
+    "github.com/m2civ/pocketbase/core"
+    "github.com/m2civ/pocketbase/daos"
+    "github.com/m2civ/pocketbase/forms/validators"
+    "github.com/m2civ/pocketbase/models"
 )
 
 // RecordPasswordResetConfirm is an auth record password reset confirmation form.
 type RecordPasswordResetConfirm struct {
-	app        core.App
-	collection *models.Collection
-	dao        *daos.Dao
+    app        core.App
+    collection *models.Collection
+    dao        *daos.Dao
 
-	Token           string `form:"token" json:"token"`
-	Password        string `form:"password" json:"password"`
-	PasswordConfirm string `form:"passwordConfirm" json:"passwordConfirm"`
+    Token           string `form:"token" json:"token"`
+    Password        string `form:"password" json:"password"`
+    PasswordConfirm string `form:"passwordConfirm" json:"passwordConfirm"`
 }
 
 // NewRecordPasswordResetConfirm creates a new [RecordPasswordResetConfirm]
@@ -25,48 +25,48 @@ type RecordPasswordResetConfirm struct {
 // If you want to submit the form as part of a transaction,
 // you can change the default Dao via [SetDao()].
 func NewRecordPasswordResetConfirm(app core.App, collection *models.Collection) *RecordPasswordResetConfirm {
-	return &RecordPasswordResetConfirm{
-		app:        app,
-		dao:        app.Dao(),
-		collection: collection,
-	}
+    return &RecordPasswordResetConfirm{
+        app:        app,
+        dao:        app.Dao(),
+        collection: collection,
+    }
 }
 
 // SetDao replaces the default form Dao instance with the provided one.
 func (form *RecordPasswordResetConfirm) SetDao(dao *daos.Dao) {
-	form.dao = dao
+    form.dao = dao
 }
 
 // Validate makes the form validatable by implementing [validation.Validatable] interface.
 func (form *RecordPasswordResetConfirm) Validate() error {
-	minPasswordLength := form.collection.AuthOptions().MinPasswordLength
+    minPasswordLength := form.collection.AuthOptions().MinPasswordLength
 
-	return validation.ValidateStruct(form,
-		validation.Field(&form.Token, validation.Required, validation.By(form.checkToken)),
-		validation.Field(&form.Password, validation.Required, validation.Length(minPasswordLength, 100)),
-		validation.Field(&form.PasswordConfirm, validation.Required, validation.By(validators.Compare(form.Password))),
-	)
+    return validation.ValidateStruct(form,
+        validation.Field(&form.Token, validation.Required, validation.By(form.checkToken)),
+        validation.Field(&form.Password, validation.Required, validation.Length(minPasswordLength, 100)),
+        validation.Field(&form.PasswordConfirm, validation.Required, validation.By(validators.Compare(form.Password))),
+    )
 }
 
 func (form *RecordPasswordResetConfirm) checkToken(value any) error {
-	v, _ := value.(string)
-	if v == "" {
-		return nil // nothing to check
-	}
+    v, _ := value.(string)
+    if v == "" {
+        return nil // nothing to check
+    }
 
-	record, err := form.dao.FindAuthRecordByToken(
-		v,
-		form.app.Settings().RecordPasswordResetToken.Secret,
-	)
-	if err != nil || record == nil {
-		return validation.NewError("validation_invalid_token", "Invalid or expired token.")
-	}
+    record, err := form.dao.FindAuthRecordByToken(
+        v,
+        form.app.Settings().RecordPasswordResetToken.Secret,
+    )
+    if err != nil || record == nil {
+        return validation.NewError("validation_invalid_token", "Invalid or expired token.")
+    }
 
-	if record.Collection().Id != form.collection.Id {
-		return validation.NewError("validation_token_collection_mismatch", "The provided token is for different auth collection.")
-	}
+    if record.Collection().Id != form.collection.Id {
+        return validation.NewError("validation_token_collection_mismatch", "The provided token is for different auth collection.")
+    }
 
-	return nil
+    return nil
 }
 
 // Submit validates and submits the form.
@@ -75,30 +75,30 @@ func (form *RecordPasswordResetConfirm) checkToken(value any) error {
 // You can optionally provide a list of InterceptorFunc to further
 // modify the form behavior before persisting it.
 func (form *RecordPasswordResetConfirm) Submit(interceptors ...InterceptorFunc[*models.Record]) (*models.Record, error) {
-	if err := form.Validate(); err != nil {
-		return nil, err
-	}
+    if err := form.Validate(); err != nil {
+        return nil, err
+    }
 
-	authRecord, err := form.dao.FindAuthRecordByToken(
-		form.Token,
-		form.app.Settings().RecordPasswordResetToken.Secret,
-	)
-	if err != nil {
-		return nil, err
-	}
+    authRecord, err := form.dao.FindAuthRecordByToken(
+        form.Token,
+        form.app.Settings().RecordPasswordResetToken.Secret,
+    )
+    if err != nil {
+        return nil, err
+    }
 
-	if err := authRecord.SetPassword(form.Password); err != nil {
-		return nil, err
-	}
+    if err := authRecord.SetPassword(form.Password); err != nil {
+        return nil, err
+    }
 
-	interceptorsErr := runInterceptors(authRecord, func(m *models.Record) error {
-		authRecord = m
-		return form.dao.SaveRecord(m)
-	}, interceptors...)
+    interceptorsErr := runInterceptors(authRecord, func(m *models.Record) error {
+        authRecord = m
+        return form.dao.SaveRecord(m)
+    }, interceptors...)
 
-	if interceptorsErr != nil {
-		return nil, interceptorsErr
-	}
+    if interceptorsErr != nil {
+        return nil, interceptorsErr
+    }
 
-	return authRecord, nil
+    return authRecord, nil
 }

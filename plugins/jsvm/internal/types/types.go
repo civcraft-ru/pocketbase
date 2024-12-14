@@ -1,17 +1,17 @@
 package main
 
 import (
-	"log"
-	"os"
-	"path/filepath"
-	"reflect"
-	"runtime"
-	"strings"
+    "log"
+    "os"
+    "path/filepath"
+    "reflect"
+    "runtime"
+    "strings"
 
-	"github.com/civcraft-ru/pocketbase/core"
-	"github.com/civcraft-ru/pocketbase/plugins/jsvm"
-	"github.com/civcraft-ru/pocketbase/tools/list"
-	"github.com/pocketbase/tygoja"
+    "github.com/m2civ/pocketbase/core"
+    "github.com/m2civ/pocketbase/plugins/jsvm"
+    "github.com/m2civ/pocketbase/tools/list"
+    "github.com/pocketbase/tygoja"
 )
 
 const heading = `
@@ -1007,113 +1007,113 @@ declare function migrate(
 var mapper = &jsvm.FieldMapper{}
 
 func main() {
-	declarations := heading + hooksDeclarations()
+    declarations := heading + hooksDeclarations()
 
-	gen := tygoja.New(tygoja.Config{
-		Packages: map[string][]string{
-			"github.com/go-ozzo/ozzo-validation/v4":             {"Error"},
-			"github.com/pocketbase/dbx":                         {"*"},
-			"github.com/civcraft-ru/pocketbase/tools/security":   {"*"},
-			"github.com/civcraft-ru/pocketbase/tools/filesystem": {"*"},
-			"github.com/civcraft-ru/pocketbase/tools/template":   {"*"},
-			"github.com/civcraft-ru/pocketbase/tokens":           {"*"},
-			"github.com/civcraft-ru/pocketbase/apis":             {"*"},
-			"github.com/civcraft-ru/pocketbase/forms":            {"*"},
-			"github.com/civcraft-ru/pocketbase":                  {"*"},
-			"path/filepath":                                     {"*"},
-			"os":                                                {"*"},
-			"os/exec":                                           {"Command"},
-		},
-		FieldNameFormatter: func(s string) string {
-			return mapper.FieldName(nil, reflect.StructField{Name: s})
-		},
-		MethodNameFormatter: func(s string) string {
-			return mapper.MethodName(nil, reflect.Method{Name: s})
-		},
-		TypeMappings: map[string]string{
-			"crypto.*":    "any",
-			"acme.*":      "any",
-			"autocert.*":  "any",
-			"driver.*":    "any",
-			"reflect.*":   "any",
-			"fmt.*":       "any",
-			"rand.*":      "any",
-			"tls.*":       "any",
-			"asn1.*":      "any",
-			"pkix.*":      "any",
-			"x509.*":      "any",
-			"pflag.*":     "any",
-			"flag.*":      "any",
-			"log.*":       "any",
-			"http.Client": "any",
-		},
-		Indent:               " ", // use only a single space to reduce slight the size
-		WithPackageFunctions: true,
-		Heading:              declarations,
-	})
+    gen := tygoja.New(tygoja.Config{
+        Packages: map[string][]string{
+            "github.com/go-ozzo/ozzo-validation/v4":        {"Error"},
+            "github.com/pocketbase/dbx":                    {"*"},
+            "github.com/m2civ/pocketbase/tools/security":   {"*"},
+            "github.com/m2civ/pocketbase/tools/filesystem": {"*"},
+            "github.com/m2civ/pocketbase/tools/template":   {"*"},
+            "github.com/m2civ/pocketbase/tokens":           {"*"},
+            "github.com/m2civ/pocketbase/apis":             {"*"},
+            "github.com/m2civ/pocketbase/forms":            {"*"},
+            "github.com/m2civ/pocketbase":                  {"*"},
+            "path/filepath":                                {"*"},
+            "os":                                           {"*"},
+            "os/exec":                                      {"Command"},
+        },
+        FieldNameFormatter: func(s string) string {
+            return mapper.FieldName(nil, reflect.StructField{Name: s})
+        },
+        MethodNameFormatter: func(s string) string {
+            return mapper.MethodName(nil, reflect.Method{Name: s})
+        },
+        TypeMappings: map[string]string{
+            "crypto.*":    "any",
+            "acme.*":      "any",
+            "autocert.*":  "any",
+            "driver.*":    "any",
+            "reflect.*":   "any",
+            "fmt.*":       "any",
+            "rand.*":      "any",
+            "tls.*":       "any",
+            "asn1.*":      "any",
+            "pkix.*":      "any",
+            "x509.*":      "any",
+            "pflag.*":     "any",
+            "flag.*":      "any",
+            "log.*":       "any",
+            "http.Client": "any",
+        },
+        Indent:               " ", // use only a single space to reduce slight the size
+        WithPackageFunctions: true,
+        Heading:              declarations,
+    })
 
-	result, err := gen.Generate()
-	if err != nil {
-		log.Fatal(err)
-	}
+    result, err := gen.Generate()
+    if err != nil {
+        log.Fatal(err)
+    }
 
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		log.Fatal("Failed to get the current docs directory")
-	}
+    _, filename, _, ok := runtime.Caller(0)
+    if !ok {
+        log.Fatal("Failed to get the current docs directory")
+    }
 
-	// replace the original app interfaces with their non-"on*"" hooks equivalents
-	result = strings.ReplaceAll(result, "core.App", "CoreApp")
-	result = strings.ReplaceAll(result, "pocketbase.PocketBase", "PocketBase")
-	result = strings.ReplaceAll(result, "ORIGINAL_CORE_APP", "core.App")
-	result = strings.ReplaceAll(result, "ORIGINAL_POCKETBASE", "pocketbase.PocketBase")
+    // replace the original app interfaces with their non-"on*"" hooks equivalents
+    result = strings.ReplaceAll(result, "core.App", "CoreApp")
+    result = strings.ReplaceAll(result, "pocketbase.PocketBase", "PocketBase")
+    result = strings.ReplaceAll(result, "ORIGINAL_CORE_APP", "core.App")
+    result = strings.ReplaceAll(result, "ORIGINAL_POCKETBASE", "pocketbase.PocketBase")
 
-	parentDir := filepath.Dir(filename)
-	typesFile := filepath.Join(parentDir, "generated", "types.d.ts")
+    parentDir := filepath.Dir(filename)
+    typesFile := filepath.Join(parentDir, "generated", "types.d.ts")
 
-	if err := os.WriteFile(typesFile, []byte(result), 0644); err != nil {
-		log.Fatal(err)
-	}
+    if err := os.WriteFile(typesFile, []byte(result), 0644); err != nil {
+        log.Fatal(err)
+    }
 }
 
 func hooksDeclarations() string {
-	var result strings.Builder
+    var result strings.Builder
 
-	excluded := []string{"OnBeforeServe"}
-	appType := reflect.TypeOf(struct{ core.App }{})
-	totalMethods := appType.NumMethod()
+    excluded := []string{"OnBeforeServe"}
+    appType := reflect.TypeOf(struct{ core.App }{})
+    totalMethods := appType.NumMethod()
 
-	for i := 0; i < totalMethods; i++ {
-		method := appType.Method(i)
-		if !strings.HasPrefix(method.Name, "On") || list.ExistInSlice(method.Name, excluded) {
-			continue // not a hook or excluded
-		}
+    for i := 0; i < totalMethods; i++ {
+        method := appType.Method(i)
+        if !strings.HasPrefix(method.Name, "On") || list.ExistInSlice(method.Name, excluded) {
+            continue // not a hook or excluded
+        }
 
-		hookType := method.Type.Out(0)
+        hookType := method.Type.Out(0)
 
-		withTags := strings.HasPrefix(hookType.String(), "*hook.TaggedHook")
+        withTags := strings.HasPrefix(hookType.String(), "*hook.TaggedHook")
 
-		addMethod, ok := hookType.MethodByName("Add")
-		if !ok {
-			continue
-		}
+        addMethod, ok := hookType.MethodByName("Add")
+        if !ok {
+            continue
+        }
 
-		addHanlder := addMethod.Type.In(1)
-		eventTypeName := strings.TrimPrefix(addHanlder.In(0).String(), "*")
+        addHanlder := addMethod.Type.In(1)
+        eventTypeName := strings.TrimPrefix(addHanlder.In(0).String(), "*")
 
-		jsName := mapper.MethodName(appType, method)
-		result.WriteString("/** @group PocketBase */")
-		result.WriteString("declare function ")
-		result.WriteString(jsName)
-		result.WriteString("(handler: (e: ")
-		result.WriteString(eventTypeName)
-		result.WriteString(") => void")
-		if withTags {
-			result.WriteString(", ...tags: string[]")
-		}
-		result.WriteString("): void")
-		result.WriteString("\n")
-	}
+        jsName := mapper.MethodName(appType, method)
+        result.WriteString("/** @group PocketBase */")
+        result.WriteString("declare function ")
+        result.WriteString(jsName)
+        result.WriteString("(handler: (e: ")
+        result.WriteString(eventTypeName)
+        result.WriteString(") => void")
+        if withTags {
+            result.WriteString(", ...tags: string[]")
+        }
+        result.WriteString("): void")
+        result.WriteString("\n")
+    }
 
-	return result.String()
+    return result.String()
 }

@@ -1,15 +1,15 @@
 package migrations
 
 import (
-	"github.com/pocketbase/dbx"
+    "github.com/pocketbase/dbx"
 )
 
 // Renormalizes old single and multiple values of MultiValuer fields (file, select, relation)
-// (see https://github.com/civcraft-ru/pocketbase/issues/2930).
+// (see https://github.com/m2civ/pocketbase/issues/2930).
 func init() {
-	AppMigrations.Register(func(db dbx.Builder) error {
-		return normalizeMultivaluerFields(db)
-	}, func(db dbx.Builder) error {
-		return nil
-	})
+    AppMigrations.Register(func(db dbx.Builder) error {
+        return normalizeMultivaluerFields(db)
+    }, func(db dbx.Builder) error {
+        return nil
+    })
 }

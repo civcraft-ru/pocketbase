@@ -1,22 +1,22 @@
 package forms
 
 import (
-	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/civcraft-ru/pocketbase/core"
-	"github.com/civcraft-ru/pocketbase/daos"
-	"github.com/civcraft-ru/pocketbase/models"
-	"github.com/civcraft-ru/pocketbase/models/schema"
-	"github.com/civcraft-ru/pocketbase/tools/security"
+    validation "github.com/go-ozzo/ozzo-validation/v4"
+    "github.com/m2civ/pocketbase/core"
+    "github.com/m2civ/pocketbase/daos"
+    "github.com/m2civ/pocketbase/models"
+    "github.com/m2civ/pocketbase/models/schema"
+    "github.com/m2civ/pocketbase/tools/security"
 )
 
 // RecordEmailChangeConfirm is an auth record email change confirmation form.
 type RecordEmailChangeConfirm struct {
-	app        core.App
-	dao        *daos.Dao
-	collection *models.Collection
+    app        core.App
+    dao        *daos.Dao
+    collection *models.Collection
 
-	Token    string `form:"token" json:"token"`
-	Password string `form:"password" json:"password"`
+    Token    string `form:"token" json:"token"`
+    Password string `form:"password" json:"password"`
 }
 
 // NewRecordEmailChangeConfirm creates a new [RecordEmailChangeConfirm] form
@@ -25,90 +25,90 @@ type RecordEmailChangeConfirm struct {
 // If you want to submit the form as part of a transaction,
 // you can change the default Dao via [SetDao()].
 func NewRecordEmailChangeConfirm(app core.App, collection *models.Collection) *RecordEmailChangeConfirm {
-	return &RecordEmailChangeConfirm{
-		app:        app,
-		dao:        app.Dao(),
-		collection: collection,
-	}
+    return &RecordEmailChangeConfirm{
+        app:        app,
+        dao:        app.Dao(),
+        collection: collection,
+    }
 }
 
 // SetDao replaces the default form Dao instance with the provided one.
 func (form *RecordEmailChangeConfirm) SetDao(dao *daos.Dao) {
-	form.dao = dao
+    form.dao = dao
 }
 
 // Validate makes the form validatable by implementing [validation.Validatable] interface.
 func (form *RecordEmailChangeConfirm) Validate() error {
-	return validation.ValidateStruct(form,
-		validation.Field(
-			&form.Token,
-			validation.Required,
-			validation.By(form.checkToken),
-		),
-		validation.Field(
-			&form.Password,
-			validation.Required,
-			validation.Length(1, 100),
-			validation.By(form.checkPassword),
-		),
-	)
+    return validation.ValidateStruct(form,
+        validation.Field(
+            &form.Token,
+            validation.Required,
+            validation.By(form.checkToken),
+        ),
+        validation.Field(
+            &form.Password,
+            validation.Required,
+            validation.Length(1, 100),
+            validation.By(form.checkPassword),
+        ),
+    )
 }
 
 func (form *RecordEmailChangeConfirm) checkToken(value any) error {
-	v, _ := value.(string)
-	if v == "" {
-		return nil // nothing to check
-	}
+    v, _ := value.(string)
+    if v == "" {
+        return nil // nothing to check
+    }
 
-	authRecord, _, err := form.parseToken(v)
-	if err != nil {
-		return err
-	}
+    authRecord, _, err := form.parseToken(v)
+    if err != nil {
+        return err
+    }
 
-	if authRecord.Collection().Id != form.collection.Id {
-		return validation.NewError("validation_token_collection_mismatch", "The provided token is for different auth collection.")
-	}
+    if authRecord.Collection().Id != form.collection.Id {
+        return validation.NewError("validation_token_collection_mismatch", "The provided token is for different auth collection.")
+    }
 
-	return nil
+    return nil
 }
 
 func (form *RecordEmailChangeConfirm) checkPassword(value any) error {
-	v, _ := value.(string)
-	if v == "" {
-		return nil // nothing to check
-	}
+    v, _ := value.(string)
+    if v == "" {
+        return nil // nothing to check
+    }
 
-	authRecord, _, _ := form.parseToken(form.Token)
-	if authRecord == nil || !authRecord.ValidatePassword(v) {
-		return validation.NewError("validation_invalid_password", "Missing or invalid auth record password.")
-	}
+    authRecord, _, _ := form.parseToken(form.Token)
+    if authRecord == nil || !authRecord.ValidatePassword(v) {
+        return validation.NewError("validation_invalid_password", "Missing or invalid auth record password.")
+    }
 
-	return nil
+    return nil
 }
 
 func (form *RecordEmailChangeConfirm) parseToken(token string) (*models.Record, string, error) {
-	// check token payload
-	claims, _ := security.ParseUnverifiedJWT(token)
-	newEmail, _ := claims["newEmail"].(string)
-	if newEmail == "" {
-		return nil, "", validation.NewError("validation_invalid_token_payload", "Invalid token payload - newEmail must be set.")
-	}
+    // check token payload
+    claims, _ := security.ParseUnverifiedJWT(token)
+    newEmail, _ := claims["newEmail"].(string)
+    if newEmail == "" {
+        return nil, "", validation.NewError("validation_invalid_token_payload", "Invalid token payload - newEmail must be set.")
+    }
 
-	// ensure that there aren't other users with the new email
-	if !form.dao.IsRecordValueUnique(form.collection.Id, schema.FieldNameEmail, newEmail) {
-		return nil, "", validation.NewError("validation_existing_token_email", "The new email address is already registered: "+newEmail)
-	}
+    // ensure that there aren't other users with the new email
+    if !form.dao.IsRecordValueUnique(form.collection.Id, schema.FieldNameEmail, newEmail) {
+        return nil, "", validation.NewError("validation_existing_token_email", "The new email address is already registered: "+newEmail)
+    }
 
-	// verify that the token is not expired and its signature is valid
-	authRecord, err := form.dao.FindAuthRecordByToken(
-		token,
-		form.app.Settings().RecordEmailChangeToken.Secret,
-	)
-	if err != nil || authRecord == nil {
-		return nil, "", validation.NewError("validation_invalid_token", "Invalid or expired token.")
-	}
+    // verify that the token is not expired and its signature is valid
+    authRecord, err := form.dao.FindAuthRecordByToken(
+        token,
+        form.app.Settings().RecordEmailChangeToken.Secret,
+    )
+    if err != nil || authRecord == nil {
+        return nil, "", validation.NewError("validation_invalid_token", "Invalid or expired token.")
+    }
 
-	return authRecord, newEmail, nil
+    return authRecord, newEmail, nil
 }
 
 // Submit validates and submits the auth record email change confirmation form.
@@ -117,27 +117,27 @@ func (form *RecordEmailChangeConfirm) parseToken(token string) (*models.Record, 
 // You can optionally provide a list of InterceptorFunc to
 // further modify the form behavior before persisting it.
 func (form *RecordEmailChangeConfirm) Submit(interceptors ...InterceptorFunc[*models.Record]) (*models.Record, error) {
-	if err := form.Validate(); err != nil {
-		return nil, err
-	}
+    if err := form.Validate(); err != nil {
+        return nil, err
+    }
 
-	authRecord, newEmail, err := form.parseToken(form.Token)
-	if err != nil {
-		return nil, err
-	}
+    authRecord, newEmail, err := form.parseToken(form.Token)
+    if err != nil {
+        return nil, err
+    }
 
-	authRecord.SetEmail(newEmail)
-	authRecord.SetVerified(true)
-	authRecord.RefreshTokenKey() // invalidate old tokens
+    authRecord.SetEmail(newEmail)
+    authRecord.SetVerified(true)
+    authRecord.RefreshTokenKey() // invalidate old tokens
 
-	interceptorsErr := runInterceptors(authRecord, func(m *models.Record) error {
-		authRecord = m
-		return form.dao.SaveRecord(m)
-	}, interceptors...)
+    interceptorsErr := runInterceptors(authRecord, func(m *models.Record) error {
+        authRecord = m
+        return form.dao.SaveRecord(m)
+    }, interceptors...)
 
-	if interceptorsErr != nil {
-		return nil, interceptorsErr
-	}
+    if interceptorsErr != nil {
+        return nil, interceptorsErr
+    }
 
-	return authRecord, nil
+    return authRecord, nil
 }

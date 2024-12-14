@@ -1,87 +1,87 @@
 package mails_test
 
 import (
-	"strings"
-	"testing"
+    "strings"
+    "testing"
 
-	"github.com/civcraft-ru/pocketbase/mails"
-	"github.com/civcraft-ru/pocketbase/tests"
+    "github.com/m2civ/pocketbase/mails"
+    "github.com/m2civ/pocketbase/tests"
 )
 
 func TestSendRecordPasswordReset(t *testing.T) {
-	testApp, _ := tests.NewTestApp()
-	defer testApp.Cleanup()
+    testApp, _ := tests.NewTestApp()
+    defer testApp.Cleanup()
 
-	// ensure that action url normalization will be applied
-	testApp.Settings().Meta.AppUrl = "http://localhost:8090////"
+    // ensure that action url normalization will be applied
+    testApp.Settings().Meta.AppUrl = "http://localhost:8090////"
 
-	user, _ := testApp.Dao().FindFirstRecordByData("users", "email", "test@example.com")
+    user, _ := testApp.Dao().FindFirstRecordByData("users", "email", "test@example.com")
 
-	err := mails.SendRecordPasswordReset(testApp, user)
-	if err != nil {
-		t.Fatal(err)
-	}
+    err := mails.SendRecordPasswordReset(testApp, user)
+    if err != nil {
+        t.Fatal(err)
+    }
 
-	if testApp.TestMailer.TotalSend != 1 {
-		t.Fatalf("Expected one email to be sent, got %d", testApp.TestMailer.TotalSend)
-	}
+    if testApp.TestMailer.TotalSend != 1 {
+        t.Fatalf("Expected one email to be sent, got %d", testApp.TestMailer.TotalSend)
+    }
 
-	expectedParts := []string{
-		"http://localhost:8090/_/#/auth/confirm-password-reset/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.",
-	}
-	for _, part := range expectedParts {
-		if !strings.Contains(testApp.TestMailer.LastMessage.HTML, part) {
-			t.Fatalf("Couldn't find %s \nin\n %s", part, testApp.TestMailer.LastMessage.HTML)
-		}
-	}
+    expectedParts := []string{
+        "http://localhost:8090/_/#/auth/confirm-password-reset/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.",
+    }
+    for _, part := range expectedParts {
+        if !strings.Contains(testApp.TestMailer.LastMessage.HTML, part) {
+            t.Fatalf("Couldn't find %s \nin\n %s", part, testApp.TestMailer.LastMessage.HTML)
+        }
+    }
 }
 
 func TestSendRecordVerification(t *testing.T) {
-	testApp, _ := tests.NewTestApp()
-	defer testApp.Cleanup()
+    testApp, _ := tests.NewTestApp()
+    defer testApp.Cleanup()
 
-	user, _ := testApp.Dao().FindFirstRecordByData("users", "email", "test@example.com")
+    user, _ := testApp.Dao().FindFirstRecordByData("users", "email", "test@example.com")
 
-	err := mails.SendRecordVerification(testApp, user)
-	if err != nil {
-		t.Fatal(err)
-	}
+    err := mails.SendRecordVerification(testApp, user)
+    if err != nil {
+        t.Fatal(err)
+    }
 
-	if testApp.TestMailer.TotalSend != 1 {
-		t.Fatalf("Expected one email to be sent, got %d", testApp.TestMailer.TotalSend)
-	}
+    if testApp.TestMailer.TotalSend != 1 {
+        t.Fatalf("Expected one email to be sent, got %d", testApp.TestMailer.TotalSend)
+    }
 
-	expectedParts := []string{
-		"http://localhost:8090/_/#/auth/confirm-verification/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.",
-	}
-	for _, part := range expectedParts {
-		if !strings.Contains(testApp.TestMailer.LastMessage.HTML, part) {
-			t.Fatalf("Couldn't find %s \nin\n %s", part, testApp.TestMailer.LastMessage.HTML)
-		}
-	}
+    expectedParts := []string{
+        "http://localhost:8090/_/#/auth/confirm-verification/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.",
+    }
+    for _, part := range expectedParts {
+        if !strings.Contains(testApp.TestMailer.LastMessage.HTML, part) {
+            t.Fatalf("Couldn't find %s \nin\n %s", part, testApp.TestMailer.LastMessage.HTML)
+        }
+    }
 }
 
 func TestSendRecordChangeEmail(t *testing.T) {
-	testApp, _ := tests.NewTestApp()
-	defer testApp.Cleanup()
+    testApp, _ := tests.NewTestApp()
+    defer testApp.Cleanup()
 
-	user, _ := testApp.Dao().FindFirstRecordByData("users", "email", "test@example.com")
+    user, _ := testApp.Dao().FindFirstRecordByData("users", "email", "test@example.com")
 
-	err := mails.SendRecordChangeEmail(testApp, user, "new_test@example.com")
-	if err != nil {
-		t.Fatal(err)
-	}
+    err := mails.SendRecordChangeEmail(testApp, user, "new_test@example.com")
+    if err != nil {
+        t.Fatal(err)
+    }
 
-	if testApp.TestMailer.TotalSend != 1 {
-		t.Fatalf("Expected one email to be sent, got %d", testApp.TestMailer.TotalSend)
-	}
+    if testApp.TestMailer.TotalSend != 1 {
+        t.Fatalf("Expected one email to be sent, got %d", testApp.TestMailer.TotalSend)
+    }
 
-	expectedParts := []string{
-		"http://localhost:8090/_/#/auth/confirm-email-change/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.",
-	}
-	for _, part := range expectedParts {
-		if !strings.Contains(testApp.TestMailer.LastMessage.HTML, part) {
-			t.Fatalf("Couldn't find %s \nin\n %s", part, testApp.TestMailer.LastMessage.HTML)
-		}
-	}
+    expectedParts := []string{
+        "http://localhost:8090/_/#/auth/confirm-email-change/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.",
+    }
+    for _, part := range expectedParts {
+        if !strings.Contains(testApp.TestMailer.LastMessage.HTML, part) {
+            t.Fatalf("Couldn't find %s \nin\n %s", part, testApp.TestMailer.LastMessage.HTML)
+        }
+    }
 }

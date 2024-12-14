@@ -1,27 +1,27 @@
 package migratecmd_test
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
-	"testing"
+    "os"
+    "path/filepath"
+    "strings"
+    "testing"
 
-	"github.com/civcraft-ru/pocketbase/daos"
-	"github.com/civcraft-ru/pocketbase/models"
-	"github.com/civcraft-ru/pocketbase/models/schema"
-	"github.com/civcraft-ru/pocketbase/plugins/migratecmd"
-	"github.com/civcraft-ru/pocketbase/tests"
-	"github.com/civcraft-ru/pocketbase/tools/types"
+    "github.com/m2civ/pocketbase/daos"
+    "github.com/m2civ/pocketbase/models"
+    "github.com/m2civ/pocketbase/models/schema"
+    "github.com/m2civ/pocketbase/plugins/migratecmd"
+    "github.com/m2civ/pocketbase/tests"
+    "github.com/m2civ/pocketbase/tools/types"
 )
 
 func TestAutomigrateCollectionCreate(t *testing.T) {
-	scenarios := []struct {
-		lang             string
-		expectedTemplate string
-	}{
-		{
-			migratecmd.TemplateLangJS,
-			`
+    scenarios := []struct {
+        lang             string
+        expectedTemplate string
+    }{
+        {
+            migratecmd.TemplateLangJS,
+            `
 /// <reference path="../pb_data/types.d.ts" />
 migrate((db) => {
   const collection = new Collection({
@@ -60,19 +60,19 @@ migrate((db) => {
   return dao.deleteCollection(collection);
 })
 `,
-		},
-		{
-			migratecmd.TemplateLangGo,
-			`
+        },
+        {
+            migratecmd.TemplateLangGo,
+            `
 package _test_migrations
 
 import (
 	"encoding/json"
 
 	"github.com/pocketbase/dbx"
-	"github.com/civcraft-ru/pocketbase/daos"
-	m "github.com/civcraft-ru/pocketbase/migrations"
-	"github.com/civcraft-ru/pocketbase/models"
+	"github.com/m2civ/pocketbase/daos"
+	m "github.com/m2civ/pocketbase/migrations"
+	"github.com/m2civ/pocketbase/models"
 )
 
 func init() {
@@ -123,78 +123,78 @@ func init() {
 	})
 }
 `,
-		},
-	}
+        },
+    }
 
-	for i, s := range scenarios {
-		app, _ := tests.NewTestApp()
-		defer app.Cleanup()
+    for i, s := range scenarios {
+        app, _ := tests.NewTestApp()
+        defer app.Cleanup()
 
-		migrationsDir := filepath.Join(app.DataDir(), "_test_migrations")
+        migrationsDir := filepath.Join(app.DataDir(), "_test_migrations")
 
-		migratecmd.MustRegister(app, nil, migratecmd.Config{
-			TemplateLang: s.lang,
-			Automigrate:  true,
-			Dir:          migrationsDir,
-		})
+        migratecmd.MustRegister(app, nil, migratecmd.Config{
+            TemplateLang: s.lang,
+            Automigrate:  true,
+            Dir:          migrationsDir,
+        })
 
-		// @todo remove after collections cache is replaced
-		app.Bootstrap()
+        // @todo remove after collections cache is replaced
+        app.Bootstrap()
 
-		collection := &models.Collection{}
-		collection.Id = "new_id"
-		collection.Name = "new_name"
-		collection.Type = models.CollectionTypeAuth
-		collection.System = true
-		collection.Created, _ = types.ParseDateTime("2022-01-01 00:00:00.000Z")
-		collection.Updated = collection.Created
-		collection.ListRule = types.Pointer("@request.auth.id != '' && created > 0 || 'backtick`test' = 0")
-		collection.ViewRule = types.Pointer(`id = "1"`)
-		collection.Indexes = types.JsonArray[string]{"create index test on new_name (id)"}
-		collection.SetOptions(models.CollectionAuthOptions{
-			ManageRule:        types.Pointer("created > 0"),
-			MinPasswordLength: 20,
-		})
-		collection.MarkAsNew()
+        collection := &models.Collection{}
+        collection.Id = "new_id"
+        collection.Name = "new_name"
+        collection.Type = models.CollectionTypeAuth
+        collection.System = true
+        collection.Created, _ = types.ParseDateTime("2022-01-01 00:00:00.000Z")
+        collection.Updated = collection.Created
+        collection.ListRule = types.Pointer("@request.auth.id != '' && created > 0 || 'backtick`test' = 0")
+        collection.ViewRule = types.Pointer(`id = "1"`)
+        collection.Indexes = types.JsonArray[string]{"create index test on new_name (id)"}
+        collection.SetOptions(models.CollectionAuthOptions{
+            ManageRule:        types.Pointer("created > 0"),
+            MinPasswordLength: 20,
+        })
+        collection.MarkAsNew()
 
-		if err := app.Dao().SaveCollection(collection); err != nil {
-			t.Fatalf("[%d] Failed to save collection, got %v", i, err)
-		}
+        if err := app.Dao().SaveCollection(collection); err != nil {
+            t.Fatalf("[%d] Failed to save collection, got %v", i, err)
+        }
 
-		files, err := os.ReadDir(migrationsDir)
-		if err != nil {
-			t.Fatalf("[%d] Expected migrationsDir to be created, got: %v", i, err)
-		}
+        files, err := os.ReadDir(migrationsDir)
+        if err != nil {
+            t.Fatalf("[%d] Expected migrationsDir to be created, got: %v", i, err)
+        }
 
-		if total := len(files); total != 1 {
-			t.Fatalf("[%d] Expected 1 file to be generated, got %d", i, total)
-		}
+        if total := len(files); total != 1 {
+            t.Fatalf("[%d] Expected 1 file to be generated, got %d", i, total)
+        }
 
-		expectedName := "_created_new_name." + s.lang
-		if !strings.Contains(files[0].Name(), expectedName) {
-			t.Fatalf("[%d] Expected filename to contains %q, got %q", i, expectedName, files[0].Name())
-		}
+        expectedName := "_created_new_name." + s.lang
+        if !strings.Contains(files[0].Name(), expectedName) {
+            t.Fatalf("[%d] Expected filename to contains %q, got %q", i, expectedName, files[0].Name())
+        }
 
-		fullPath := filepath.Join(migrationsDir, files[0].Name())
-		content, err := os.ReadFile(fullPath)
-		if err != nil {
-			t.Fatalf("[%d] Failed to read the generated migration file: %v", i, err)
-		}
+        fullPath := filepath.Join(migrationsDir, files[0].Name())
+        content, err := os.ReadFile(fullPath)
+        if err != nil {
+            t.Fatalf("[%d] Failed to read the generated migration file: %v", i, err)
+        }
 
-		if v := strings.TrimSpace(string(content)); v != strings.TrimSpace(s.expectedTemplate) {
-			t.Fatalf("[%d] Expected template \n%v \ngot \n%v", i, s.expectedTemplate, v)
-		}
-	}
+        if v := strings.TrimSpace(string(content)); v != strings.TrimSpace(s.expectedTemplate) {
+            t.Fatalf("[%d] Expected template \n%v \ngot \n%v", i, s.expectedTemplate, v)
+        }
+    }
 }
 
 func TestAutomigrateCollectionDelete(t *testing.T) {
-	scenarios := []struct {
-		lang             string
-		expectedTemplate string
-	}{
-		{
-			migratecmd.TemplateLangJS,
-			`
+    scenarios := []struct {
+        lang             string
+        expectedTemplate string
+    }{
+        {
+            migratecmd.TemplateLangJS,
+            `
 /// <reference path="../pb_data/types.d.ts" />
 migrate((db) => {
   const dao = new Dao(db);
@@ -233,19 +233,19 @@ migrate((db) => {
   return Dao(db).saveCollection(collection);
 })
 `,
-		},
-		{
-			migratecmd.TemplateLangGo,
-			`
+        },
+        {
+            migratecmd.TemplateLangGo,
+            `
 package _test_migrations
 
 import (
 	"encoding/json"
 
 	"github.com/pocketbase/dbx"
-	"github.com/civcraft-ru/pocketbase/daos"
-	m "github.com/civcraft-ru/pocketbase/migrations"
-	"github.com/civcraft-ru/pocketbase/models"
+	"github.com/m2civ/pocketbase/daos"
+	m "github.com/m2civ/pocketbase/migrations"
+	"github.com/m2civ/pocketbase/models"
 )
 
 func init() {
@@ -296,84 +296,84 @@ func init() {
 	})
 }
 `,
-		},
-	}
+        },
+    }
 
-	for i, s := range scenarios {
-		app, _ := tests.NewTestApp()
-		defer app.Cleanup()
+    for i, s := range scenarios {
+        app, _ := tests.NewTestApp()
+        defer app.Cleanup()
 
-		migrationsDir := filepath.Join(app.DataDir(), "_test_migrations")
+        migrationsDir := filepath.Join(app.DataDir(), "_test_migrations")
 
-		migratecmd.MustRegister(app, nil, migratecmd.Config{
-			TemplateLang: s.lang,
-			Automigrate:  true,
-			Dir:          migrationsDir,
-		})
+        migratecmd.MustRegister(app, nil, migratecmd.Config{
+            TemplateLang: s.lang,
+            Automigrate:  true,
+            Dir:          migrationsDir,
+        })
 
-		// create dummy collection
-		collection := &models.Collection{}
-		collection.Id = "test123"
-		collection.Name = "test456"
-		collection.Type = models.CollectionTypeAuth
-		collection.Created, _ = types.ParseDateTime("2022-01-01 00:00:00.000Z")
-		collection.Updated = collection.Created
-		collection.ListRule = types.Pointer("@request.auth.id != '' && created > 0 || 'backtick`test' = 0")
-		collection.ViewRule = types.Pointer(`id = "1"`)
-		collection.Indexes = types.JsonArray[string]{"create index test on test456 (id)"}
-		collection.SetOptions(models.CollectionAuthOptions{
-			ManageRule:        types.Pointer("created > 0"),
-			MinPasswordLength: 20,
-		})
-		collection.MarkAsNew()
+        // create dummy collection
+        collection := &models.Collection{}
+        collection.Id = "test123"
+        collection.Name = "test456"
+        collection.Type = models.CollectionTypeAuth
+        collection.Created, _ = types.ParseDateTime("2022-01-01 00:00:00.000Z")
+        collection.Updated = collection.Created
+        collection.ListRule = types.Pointer("@request.auth.id != '' && created > 0 || 'backtick`test' = 0")
+        collection.ViewRule = types.Pointer(`id = "1"`)
+        collection.Indexes = types.JsonArray[string]{"create index test on test456 (id)"}
+        collection.SetOptions(models.CollectionAuthOptions{
+            ManageRule:        types.Pointer("created > 0"),
+            MinPasswordLength: 20,
+        })
+        collection.MarkAsNew()
 
-		// use different dao to avoid triggering automigrate while saving the dummy collection
-		if err := daos.New(app.DB()).SaveCollection(collection); err != nil {
-			t.Fatalf("[%d] Failed to save dummy collection, got %v", i, err)
-		}
+        // use different dao to avoid triggering automigrate while saving the dummy collection
+        if err := daos.New(app.DB()).SaveCollection(collection); err != nil {
+            t.Fatalf("[%d] Failed to save dummy collection, got %v", i, err)
+        }
 
-		// @todo remove after collections cache is replaced
-		app.Bootstrap()
+        // @todo remove after collections cache is replaced
+        app.Bootstrap()
 
-		// delete the newly created dummy collection
-		if err := app.Dao().DeleteCollection(collection); err != nil {
-			t.Fatalf("[%d] Failed to delete dummy collection, got %v", i, err)
-		}
+        // delete the newly created dummy collection
+        if err := app.Dao().DeleteCollection(collection); err != nil {
+            t.Fatalf("[%d] Failed to delete dummy collection, got %v", i, err)
+        }
 
-		files, err := os.ReadDir(migrationsDir)
-		if err != nil {
-			t.Fatalf("[%d] Expected migrationsDir to be created, got: %v", i, err)
-		}
+        files, err := os.ReadDir(migrationsDir)
+        if err != nil {
+            t.Fatalf("[%d] Expected migrationsDir to be created, got: %v", i, err)
+        }
 
-		if total := len(files); total != 1 {
-			t.Fatalf("[%d] Expected 1 file to be generated, got %d", i, total)
-		}
+        if total := len(files); total != 1 {
+            t.Fatalf("[%d] Expected 1 file to be generated, got %d", i, total)
+        }
 
-		expectedName := "_deleted_test456." + s.lang
-		if !strings.Contains(files[0].Name(), expectedName) {
-			t.Fatalf("[%d] Expected filename to contains %q, got %q", i, expectedName, files[0].Name())
-		}
+        expectedName := "_deleted_test456." + s.lang
+        if !strings.Contains(files[0].Name(), expectedName) {
+            t.Fatalf("[%d] Expected filename to contains %q, got %q", i, expectedName, files[0].Name())
+        }
 
-		fullPath := filepath.Join(migrationsDir, files[0].Name())
-		content, err := os.ReadFile(fullPath)
-		if err != nil {
-			t.Fatalf("[%d] Failed to read the generated migration file: %v", i, err)
-		}
+        fullPath := filepath.Join(migrationsDir, files[0].Name())
+        content, err := os.ReadFile(fullPath)
+        if err != nil {
+            t.Fatalf("[%d] Failed to read the generated migration file: %v", i, err)
+        }
 
-		if v := strings.TrimSpace(string(content)); v != strings.TrimSpace(s.expectedTemplate) {
-			t.Fatalf("[%d] Expected template \n%v \ngot \n%v", i, s.expectedTemplate, v)
-		}
-	}
+        if v := strings.TrimSpace(string(content)); v != strings.TrimSpace(s.expectedTemplate) {
+            t.Fatalf("[%d] Expected template \n%v \ngot \n%v", i, s.expectedTemplate, v)
+        }
+    }
 }
 
 func TestAutomigrateCollectionUpdate(t *testing.T) {
-	scenarios := []struct {
-		lang             string
-		expectedTemplate string
-	}{
-		{
-			migratecmd.TemplateLangJS,
-			`
+    scenarios := []struct {
+        lang             string
+        expectedTemplate string
+    }{
+        {
+            migratecmd.TemplateLangJS,
+            `
 /// <reference path="../pb_data/types.d.ts" />
 migrate((db) => {
   const dao = new Dao(db)
@@ -484,20 +484,20 @@ migrate((db) => {
   return dao.saveCollection(collection)
 })
 `,
-		},
-		{
-			migratecmd.TemplateLangGo,
-			`
+        },
+        {
+            migratecmd.TemplateLangGo,
+            `
 package _test_migrations
 
 import (
 	"encoding/json"
 
 	"github.com/pocketbase/dbx"
-	"github.com/civcraft-ru/pocketbase/daos"
-	m "github.com/civcraft-ru/pocketbase/migrations"
-	"github.com/civcraft-ru/pocketbase/models/schema"
-	"github.com/civcraft-ru/pocketbase/tools/types"
+	"github.com/m2civ/pocketbase/daos"
+	m "github.com/m2civ/pocketbase/migrations"
+	"github.com/m2civ/pocketbase/models/schema"
+	"github.com/m2civ/pocketbase/tools/types"
 )
 
 func init() {
@@ -645,168 +645,168 @@ func init() {
 	})
 }
 `,
-		},
-	}
+        },
+    }
 
-	for i, s := range scenarios {
-		app, _ := tests.NewTestApp()
-		defer app.Cleanup()
+    for i, s := range scenarios {
+        app, _ := tests.NewTestApp()
+        defer app.Cleanup()
 
-		migrationsDir := filepath.Join(app.DataDir(), "_test_migrations")
+        migrationsDir := filepath.Join(app.DataDir(), "_test_migrations")
 
-		migratecmd.MustRegister(app, nil, migratecmd.Config{
-			TemplateLang: s.lang,
-			Automigrate:  true,
-			Dir:          migrationsDir,
-		})
+        migratecmd.MustRegister(app, nil, migratecmd.Config{
+            TemplateLang: s.lang,
+            Automigrate:  true,
+            Dir:          migrationsDir,
+        })
 
-		// create dummy collection
-		collection := &models.Collection{}
-		collection.Id = "test123"
-		collection.Name = "test456"
-		collection.Type = models.CollectionTypeAuth
-		collection.Created, _ = types.ParseDateTime("2022-01-01 00:00:00.000Z")
-		collection.Updated = collection.Created
-		collection.ListRule = types.Pointer("@request.auth.id != '' && created > 0")
-		collection.ViewRule = types.Pointer(`id = "1"`)
-		collection.UpdateRule = types.Pointer(`id = "2"`)
-		collection.CreateRule = nil
-		collection.DeleteRule = types.Pointer(`id = "3"`)
-		collection.Indexes = types.JsonArray[string]{"create index test1 on test456 (f1_name)"}
-		collection.SetOptions(models.CollectionAuthOptions{
-			ManageRule:        types.Pointer("created > 0"),
-			MinPasswordLength: 20,
-		})
-		collection.MarkAsNew()
-		collection.Schema.AddField(&schema.SchemaField{
-			Id:       "f1_id",
-			Name:     "f1_name",
-			Type:     schema.FieldTypeText,
-			Required: true,
-		})
-		collection.Schema.AddField(&schema.SchemaField{
-			Id:     "f2_id",
-			Name:   "f2_name",
-			Type:   schema.FieldTypeNumber,
-			Unique: true,
-			Options: &schema.NumberOptions{
-				Min: types.Pointer(10.0),
-			},
-		})
-		collection.Schema.AddField(&schema.SchemaField{
-			Id:   "f3_id",
-			Name: "f3_name",
-			Type: schema.FieldTypeBool,
-		})
+        // create dummy collection
+        collection := &models.Collection{}
+        collection.Id = "test123"
+        collection.Name = "test456"
+        collection.Type = models.CollectionTypeAuth
+        collection.Created, _ = types.ParseDateTime("2022-01-01 00:00:00.000Z")
+        collection.Updated = collection.Created
+        collection.ListRule = types.Pointer("@request.auth.id != '' && created > 0")
+        collection.ViewRule = types.Pointer(`id = "1"`)
+        collection.UpdateRule = types.Pointer(`id = "2"`)
+        collection.CreateRule = nil
+        collection.DeleteRule = types.Pointer(`id = "3"`)
+        collection.Indexes = types.JsonArray[string]{"create index test1 on test456 (f1_name)"}
+        collection.SetOptions(models.CollectionAuthOptions{
+            ManageRule:        types.Pointer("created > 0"),
+            MinPasswordLength: 20,
+        })
+        collection.MarkAsNew()
+        collection.Schema.AddField(&schema.SchemaField{
+            Id:       "f1_id",
+            Name:     "f1_name",
+            Type:     schema.FieldTypeText,
+            Required: true,
+        })
+        collection.Schema.AddField(&schema.SchemaField{
+            Id:     "f2_id",
+            Name:   "f2_name",
+            Type:   schema.FieldTypeNumber,
+            Unique: true,
+            Options: &schema.NumberOptions{
+                Min: types.Pointer(10.0),
+            },
+        })
+        collection.Schema.AddField(&schema.SchemaField{
+            Id:   "f3_id",
+            Name: "f3_name",
+            Type: schema.FieldTypeBool,
+        })
 
-		// use different dao to avoid triggering automigrate while saving the dummy collection
-		if err := daos.New(app.DB()).SaveCollection(collection); err != nil {
-			t.Fatalf("[%d] Failed to save dummy collection, got %v", i, err)
-		}
+        // use different dao to avoid triggering automigrate while saving the dummy collection
+        if err := daos.New(app.DB()).SaveCollection(collection); err != nil {
+            t.Fatalf("[%d] Failed to save dummy collection, got %v", i, err)
+        }
 
-		// @todo remove after collections cache is replaced
-		app.Bootstrap()
+        // @todo remove after collections cache is replaced
+        app.Bootstrap()
 
-		collection.Name = "test456_update"
-		collection.Type = models.CollectionTypeBase
-		collection.DeleteRule = types.Pointer(`updated > 0 && @request.auth.id != ''`)
-		collection.ListRule = types.Pointer("@request.auth.id != ''")
-		collection.ViewRule = types.Pointer(`id = "1"`) // no change
-		collection.UpdateRule = types.Pointer(`id = "2_update"`)
-		collection.CreateRule = types.Pointer(`id = "nil_update"`)
-		collection.DeleteRule = nil
-		collection.Indexes = types.JsonArray[string]{
-			"create index test1 on test456_update (f1_name)",
-		}
-		collection.NormalizeOptions()
-		collection.Schema.RemoveField("f3_id")
-		collection.Schema.AddField(&schema.SchemaField{
-			Id:   "f4_id",
-			Name: "f4_name",
-			Type: schema.FieldTypeText,
-			Options: &schema.TextOptions{
-				Pattern: "`test backtick`123",
-			},
-		})
-		f := collection.Schema.GetFieldById("f2_id")
-		f.Name = "f2_name_new"
+        collection.Name = "test456_update"
+        collection.Type = models.CollectionTypeBase
+        collection.DeleteRule = types.Pointer(`updated > 0 && @request.auth.id != ''`)
+        collection.ListRule = types.Pointer("@request.auth.id != ''")
+        collection.ViewRule = types.Pointer(`id = "1"`) // no change
+        collection.UpdateRule = types.Pointer(`id = "2_update"`)
+        collection.CreateRule = types.Pointer(`id = "nil_update"`)
+        collection.DeleteRule = nil
+        collection.Indexes = types.JsonArray[string]{
+            "create index test1 on test456_update (f1_name)",
+        }
+        collection.NormalizeOptions()
+        collection.Schema.RemoveField("f3_id")
+        collection.Schema.AddField(&schema.SchemaField{
+            Id:   "f4_id",
+            Name: "f4_name",
+            Type: schema.FieldTypeText,
+            Options: &schema.TextOptions{
+                Pattern: "`test backtick`123",
+            },
+        })
+        f := collection.Schema.GetFieldById("f2_id")
+        f.Name = "f2_name_new"
 
-		// save the changes and trigger automigrate
-		if err := app.Dao().SaveCollection(collection); err != nil {
-			t.Fatalf("[%d] Failed to save dummy collection changes, got %v", i, err)
-		}
+        // save the changes and trigger automigrate
+        if err := app.Dao().SaveCollection(collection); err != nil {
+            t.Fatalf("[%d] Failed to save dummy collection changes, got %v", i, err)
+        }
 
-		files, err := os.ReadDir(migrationsDir)
-		if err != nil {
-			t.Fatalf("[%d] Expected migrationsDir to be created, got: %v", i, err)
-		}
+        files, err := os.ReadDir(migrationsDir)
+        if err != nil {
+            t.Fatalf("[%d] Expected migrationsDir to be created, got: %v", i, err)
+        }
 
-		if total := len(files); total != 1 {
-			t.Fatalf("[%d] Expected 1 file to be generated, got %d", i, total)
-		}
+        if total := len(files); total != 1 {
+            t.Fatalf("[%d] Expected 1 file to be generated, got %d", i, total)
+        }
 
-		expectedName := "_updated_test456." + s.lang
-		if !strings.Contains(files[0].Name(), expectedName) {
-			t.Fatalf("[%d] Expected filename to contains %q, got %q", i, expectedName, files[0].Name())
-		}
+        expectedName := "_updated_test456." + s.lang
+        if !strings.Contains(files[0].Name(), expectedName) {
+            t.Fatalf("[%d] Expected filename to contains %q, got %q", i, expectedName, files[0].Name())
+        }
 
-		fullPath := filepath.Join(migrationsDir, files[0].Name())
-		content, err := os.ReadFile(fullPath)
-		if err != nil {
-			t.Fatalf("[%d] Failed to read the generated migration file: %v", i, err)
-		}
+        fullPath := filepath.Join(migrationsDir, files[0].Name())
+        content, err := os.ReadFile(fullPath)
+        if err != nil {
+            t.Fatalf("[%d] Failed to read the generated migration file: %v", i, err)
+        }
 
-		if v := strings.TrimSpace(string(content)); v != strings.TrimSpace(s.expectedTemplate) {
-			t.Fatalf("[%d] Expected template \n%v \ngot \n%v", i, s.expectedTemplate, v)
-		}
-	}
+        if v := strings.TrimSpace(string(content)); v != strings.TrimSpace(s.expectedTemplate) {
+            t.Fatalf("[%d] Expected template \n%v \ngot \n%v", i, s.expectedTemplate, v)
+        }
+    }
 }
 
 func TestAutomigrateCollectionNoChanges(t *testing.T) {
-	scenarios := []struct {
-		lang string
-	}{
-		{
-			migratecmd.TemplateLangJS,
-		},
-		{
-			migratecmd.TemplateLangGo,
-		},
-	}
+    scenarios := []struct {
+        lang string
+    }{
+        {
+            migratecmd.TemplateLangJS,
+        },
+        {
+            migratecmd.TemplateLangGo,
+        },
+    }
 
-	for i, s := range scenarios {
-		app, _ := tests.NewTestApp()
-		defer app.Cleanup()
+    for i, s := range scenarios {
+        app, _ := tests.NewTestApp()
+        defer app.Cleanup()
 
-		migrationsDir := filepath.Join(app.DataDir(), "_test_migrations")
+        migrationsDir := filepath.Join(app.DataDir(), "_test_migrations")
 
-		migratecmd.MustRegister(app, nil, migratecmd.Config{
-			TemplateLang: s.lang,
-			Automigrate:  true,
-			Dir:          migrationsDir,
-		})
+        migratecmd.MustRegister(app, nil, migratecmd.Config{
+            TemplateLang: s.lang,
+            Automigrate:  true,
+            Dir:          migrationsDir,
+        })
 
-		// create dummy collection
-		collection := &models.Collection{}
-		collection.Name = "test123"
-		collection.Type = models.CollectionTypeAuth
+        // create dummy collection
+        collection := &models.Collection{}
+        collection.Name = "test123"
+        collection.Type = models.CollectionTypeAuth
 
-		// use different dao to avoid triggering automigrate while saving the dummy collection
-		if err := daos.New(app.DB()).SaveCollection(collection); err != nil {
-			t.Fatalf("[%d] Failed to save dummy collection, got %v", i, err)
-		}
+        // use different dao to avoid triggering automigrate while saving the dummy collection
+        if err := daos.New(app.DB()).SaveCollection(collection); err != nil {
+            t.Fatalf("[%d] Failed to save dummy collection, got %v", i, err)
+        }
 
-		// @todo remove after collections cache is replaced
-		app.Bootstrap()
+        // @todo remove after collections cache is replaced
+        app.Bootstrap()
 
-		// resave without changes and trigger automigrate
-		if err := app.Dao().SaveCollection(collection); err != nil {
-			t.Fatalf("[%d] Failed to save dummy collection update, got %v", i, err)
-		}
+        // resave without changes and trigger automigrate
+        if err := app.Dao().SaveCollection(collection); err != nil {
+            t.Fatalf("[%d] Failed to save dummy collection update, got %v", i, err)
+        }
 
-		files, _ := os.ReadDir(migrationsDir)
-		if total := len(files); total != 0 {
-			t.Fatalf("[%d] Expected 0 files to be generated, got %d", i, total)
-		}
-	}
+        files, _ := os.ReadDir(migrationsDir)
+        if total := len(files); total != 0 {
+            t.Fatalf("[%d] Expected 0 files to be generated, got %d", i, total)
+        }
+    }
 }

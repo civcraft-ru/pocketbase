@@ -1,38 +1,38 @@
 package resolvers
 
 import (
-	"encoding/json"
-	"fmt"
-	"strconv"
-	"strings"
+    "encoding/json"
+    "fmt"
+    "strconv"
+    "strings"
 
-	"github.com/pocketbase/dbx"
-	"github.com/civcraft-ru/pocketbase/models"
-	"github.com/civcraft-ru/pocketbase/models/schema"
-	"github.com/civcraft-ru/pocketbase/tools/search"
-	"github.com/civcraft-ru/pocketbase/tools/security"
-	"github.com/spf13/cast"
+    "github.com/pocketbase/dbx"
+    "github.com/m2civ/pocketbase/models"
+    "github.com/m2civ/pocketbase/models/schema"
+    "github.com/m2civ/pocketbase/tools/search"
+    "github.com/m2civ/pocketbase/tools/security"
+    "github.com/spf13/cast"
 )
 
 // filter modifiers
 const (
-	eachModifier   string = "each"
-	issetModifier  string = "isset"
-	lengthModifier string = "length"
+    eachModifier   string = "each"
+    issetModifier  string = "isset"
+    lengthModifier string = "length"
 )
 
 // list of auth filter fields that don't require join with the auth
 // collection or any other extra checks to be resolved.
 var plainRequestAuthFields = []string{
-	"@request.auth." + schema.FieldNameId,
-	"@request.auth." + schema.FieldNameCollectionId,
-	"@request.auth." + schema.FieldNameCollectionName,
-	"@request.auth." + schema.FieldNameUsername,
-	"@request.auth." + schema.FieldNameEmail,
-	"@request.auth." + schema.FieldNameEmailVisibility,
-	"@request.auth." + schema.FieldNameVerified,
-	"@request.auth." + schema.FieldNameCreated,
-	"@request.auth." + schema.FieldNameUpdated,
+    "@request.auth." + schema.FieldNameId,
+    "@request.auth." + schema.FieldNameCollectionId,
+    "@request.auth." + schema.FieldNameCollectionName,
+    "@request.auth." + schema.FieldNameUsername,
+    "@request.auth." + schema.FieldNameEmail,
+    "@request.auth." + schema.FieldNameEmailVisibility,
+    "@request.auth." + schema.FieldNameVerified,
+    "@request.auth." + schema.FieldNameCreated,
+    "@request.auth." + schema.FieldNameUpdated,
 }
 
 // ensure that `search.FieldResolver` interface is implemented
@@ -44,7 +44,7 @@ var _ search.FieldResolver = (*RecordFieldResolver)(nil)
 // The interface at the moment is primarily used to avoid circular
 // dependency with the daos.Dao package.
 type CollectionsFinder interface {
-	FindCollectionByNameOrId(collectionNameOrId string) (*models.Collection, error)
+    FindCollectionByNameOrId(collectionNameOrId string) (*models.Collection, error)
 }
 
 // RecordFieldResolver defines a custom search resolver struct for
@@ -62,56 +62,56 @@ type CollectionsFinder interface {
 //	provider := search.NewProvider(resolver)
 //	...
 type RecordFieldResolver struct {
-	dao               CollectionsFinder
-	baseCollection    *models.Collection
-	allowHiddenFields bool
-	allowedFields     []string
-	loadedCollections []*models.Collection
-	joins             []*join // we cannot use a map because the insertion order is not preserved
-	requestInfo       *models.RequestInfo
-	staticRequestInfo map[string]any
+    dao               CollectionsFinder
+    baseCollection    *models.Collection
+    allowHiddenFields bool
+    allowedFields     []string
+    loadedCollections []*models.Collection
+    joins             []*join // we cannot use a map because the insertion order is not preserved
+    requestInfo       *models.RequestInfo
+    staticRequestInfo map[string]any
 }
 
 // NewRecordFieldResolver creates and initializes a new `RecordFieldResolver`.
 func NewRecordFieldResolver(
-	dao CollectionsFinder,
-	baseCollection *models.Collection,
-	requestInfo *models.RequestInfo,
-	allowHiddenFields bool,
+    dao CollectionsFinder,
+    baseCollection *models.Collection,
+    requestInfo *models.RequestInfo,
+    allowHiddenFields bool,
 ) *RecordFieldResolver {
-	r := &RecordFieldResolver{
-		dao:               dao,
-		baseCollection:    baseCollection,
-		requestInfo:       requestInfo,
-		allowHiddenFields: allowHiddenFields,
-		joins:             []*join{},
-		loadedCollections: []*models.Collection{baseCollection},
-		allowedFields: []string{
-			`^\w+[\w\.\:]*$`,
-			`^\@request\.method$`,
-			`^\@request\.auth\.[\w\.\:]*\w+$`,
-			`^\@request\.data\.[\w\.\:]*\w+$`,
-			`^\@request\.query\.[\w\.\:]*\w+$`,
-			`^\@request\.headers\.\w+$`,
-			`^\@collection\.\w+\.[\w\.\:]*\w+$`,
-		},
-	}
+    r := &RecordFieldResolver{
+        dao:               dao,
+        baseCollection:    baseCollection,
+        requestInfo:       requestInfo,
+        allowHiddenFields: allowHiddenFields,
+        joins:             []*join{},
+        loadedCollections: []*models.Collection{baseCollection},
+        allowedFields: []string{
+            `^\w+[\w\.\:]*$`,
+            `^\@request\.method$`,
+            `^\@request\.auth\.[\w\.\:]*\w+$`,
+            `^\@request\.data\.[\w\.\:]*\w+$`,
+            `^\@request\.query\.[\w\.\:]*\w+$`,
+            `^\@request\.headers\.\w+$`,
+            `^\@collection\.\w+\.[\w\.\:]*\w+$`,
+        },
+    }
 
-	r.staticRequestInfo = map[string]any{}
-	if r.requestInfo != nil {
-		r.staticRequestInfo["method"] = r.requestInfo.Method
-		r.staticRequestInfo["query"] = r.requestInfo.Query
-		r.staticRequestInfo["headers"] = r.requestInfo.Headers
-		r.staticRequestInfo["data"] = r.requestInfo.Data
-		r.staticRequestInfo["auth"] = nil
-		if r.requestInfo.AuthRecord != nil {
-			r.requestInfo.AuthRecord.IgnoreEmailVisibility(true)
-			r.staticRequestInfo["auth"] = r.requestInfo.AuthRecord.PublicExport()
-			r.requestInfo.AuthRecord.IgnoreEmailVisibility(false)
-		}
-	}
+    r.staticRequestInfo = map[string]any{}
+    if r.requestInfo != nil {
+        r.staticRequestInfo["method"] = r.requestInfo.Method
+        r.staticRequestInfo["query"] = r.requestInfo.Query
+        r.staticRequestInfo["headers"] = r.requestInfo.Headers
+        r.staticRequestInfo["data"] = r.requestInfo.Data
+        r.staticRequestInfo["auth"] = nil
+        if r.requestInfo.AuthRecord != nil {
+            r.requestInfo.AuthRecord.IgnoreEmailVisibility(true)
+            r.staticRequestInfo["auth"] = r.requestInfo.AuthRecord.PublicExport()
+            r.requestInfo.AuthRecord.IgnoreEmailVisibility(false)
+        }
+    }
 
-	return r
+    return r
 }
 
 // UpdateQuery implements `search.FieldResolver` interface.
@@ -119,18 +119,18 @@ func NewRecordFieldResolver(
 // Conditionally updates the provided search query based on the
 // resolved fields (eg. dynamically joining relations).
 func (r *RecordFieldResolver) UpdateQuery(query *dbx.SelectQuery) error {
-	if len(r.joins) > 0 {
-		query.Distinct(true)
+    if len(r.joins) > 0 {
+        query.Distinct(true)
 
-		for _, join := range r.joins {
-			query.LeftJoin(
-				(join.tableName + " " + join.tableAlias),
-				join.on,
-			)
-		}
-	}
+        for _, join := range r.joins {
+            query.LeftJoin(
+                (join.tableName + " " + join.tableAlias),
+                join.on,
+            )
+        }
+    }
 
-	return nil
+    return nil
 }
 
 // Resolve implements `search.FieldResolver` interface.
@@ -150,147 +150,147 @@ func (r *RecordFieldResolver) UpdateQuery(query *dbx.SelectQuery) error {
 //	@request.data.someField:isset
 //	@collection.product.name
 func (r *RecordFieldResolver) Resolve(fieldName string) (*search.ResolverResult, error) {
-	return parseAndRun(fieldName, r)
+    return parseAndRun(fieldName, r)
 }
 
 func (r *RecordFieldResolver) resolveStaticRequestField(path ...string) (*search.ResolverResult, error) {
-	if len(path) == 0 {
-		return nil, fmt.Errorf("at least one path key should be provided")
-	}
+    if len(path) == 0 {
+        return nil, fmt.Errorf("at least one path key should be provided")
+    }
 
-	lastProp, modifier, err := splitModifier(path[len(path)-1])
-	if err != nil {
-		return nil, err
-	}
+    lastProp, modifier, err := splitModifier(path[len(path)-1])
+    if err != nil {
+        return nil, err
+    }
 
-	path[len(path)-1] = lastProp
+    path[len(path)-1] = lastProp
 
-	// extract value
-	resultVal, err := extractNestedMapVal(r.staticRequestInfo, path...)
+    // extract value
+    resultVal, err := extractNestedMapVal(r.staticRequestInfo, path...)
 
-	if modifier == issetModifier {
-		if err != nil {
-			return &search.ResolverResult{Identifier: "FALSE"}, nil
-		}
-		return &search.ResolverResult{Identifier: "TRUE"}, nil
-	}
+    if modifier == issetModifier {
+        if err != nil {
+            return &search.ResolverResult{Identifier: "FALSE"}, nil
+        }
+        return &search.ResolverResult{Identifier: "TRUE"}, nil
+    }
 
-	// note: we are ignoring the error because requestInfo is dynamic
-	// and some of the lookup keys may not be defined for the request
+    // note: we are ignoring the error because requestInfo is dynamic
+    // and some of the lookup keys may not be defined for the request
 
-	switch v := resultVal.(type) {
-	case nil:
-		return &search.ResolverResult{Identifier: "NULL"}, nil
-	case string:
-		// check if it is a number field and explicitly try to cast to
-		// float in case of a numeric string value was used
-		// (this usually the case when the data is from a multipart/form-data request)
-		field := r.baseCollection.Schema.GetFieldByName(path[len(path)-1])
-		if field != nil && field.Type == schema.FieldTypeNumber {
-			if nv, err := strconv.ParseFloat(v, 64); err == nil {
-				resultVal = nv
-			}
-		}
-		// otherwise - no further processing is needed...
-	case bool, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
-		// no further processing is needed...
-	default:
-		// non-plain value
-		// try casting to string (in case for exampe fmt.Stringer is implemented)
-		val, castErr := cast.ToStringE(v)
+    switch v := resultVal.(type) {
+    case nil:
+        return &search.ResolverResult{Identifier: "NULL"}, nil
+    case string:
+        // check if it is a number field and explicitly try to cast to
+        // float in case of a numeric string value was used
+        // (this usually the case when the data is from a multipart/form-data request)
+        field := r.baseCollection.Schema.GetFieldByName(path[len(path)-1])
+        if field != nil && field.Type == schema.FieldTypeNumber {
+            if nv, err := strconv.ParseFloat(v, 64); err == nil {
+                resultVal = nv
+            }
+        }
+        // otherwise - no further processing is needed...
+    case bool, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+        // no further processing is needed...
+    default:
+        // non-plain value
+        // try casting to string (in case for exampe fmt.Stringer is implemented)
+        val, castErr := cast.ToStringE(v)
 
-		// if that doesn't work, try encoding it
-		if castErr != nil {
-			encoded, jsonErr := json.Marshal(v)
-			if jsonErr == nil {
-				val = string(encoded)
-			}
-		}
+        // if that doesn't work, try encoding it
+        if castErr != nil {
+            encoded, jsonErr := json.Marshal(v)
+            if jsonErr == nil {
+                val = string(encoded)
+            }
+        }
 
-		resultVal = val
-	}
+        resultVal = val
+    }
 
-	placeholder := "f" + security.PseudorandomString(5)
+    placeholder := "f" + security.PseudorandomString(5)
 
-	return &search.ResolverResult{
-		Identifier: "{:" + placeholder + "}",
-		Params:     dbx.Params{placeholder: resultVal},
-	}, nil
+    return &search.ResolverResult{
+        Identifier: "{:" + placeholder + "}",
+        Params:     dbx.Params{placeholder: resultVal},
+    }, nil
 }
 
 func (r *RecordFieldResolver) loadCollection(collectionNameOrId string) (*models.Collection, error) {
-	// return already loaded
-	for _, collection := range r.loadedCollections {
-		if collection.Id == collectionNameOrId || strings.EqualFold(collection.Name, collectionNameOrId) {
-			return collection, nil
-		}
-	}
+    // return already loaded
+    for _, collection := range r.loadedCollections {
+        if collection.Id == collectionNameOrId || strings.EqualFold(collection.Name, collectionNameOrId) {
+            return collection, nil
+        }
+    }
 
-	// load collection
-	collection, err := r.dao.FindCollectionByNameOrId(collectionNameOrId)
-	if err != nil {
-		return nil, err
-	}
-	r.loadedCollections = append(r.loadedCollections, collection)
+    // load collection
+    collection, err := r.dao.FindCollectionByNameOrId(collectionNameOrId)
+    if err != nil {
+        return nil, err
+    }
+    r.loadedCollections = append(r.loadedCollections, collection)
 
-	return collection, nil
+    return collection, nil
 }
 
 func (r *RecordFieldResolver) registerJoin(tableName string, tableAlias string, on dbx.Expression) {
-	join := &join{
-		tableName:  tableName,
-		tableAlias: tableAlias,
-		on:         on,
-	}
+    join := &join{
+        tableName:  tableName,
+        tableAlias: tableAlias,
+        on:         on,
+    }
 
-	// replace existing join
-	for i, j := range r.joins {
-		if j.tableAlias == join.tableAlias {
-			r.joins[i] = join
-			return
-		}
-	}
+    // replace existing join
+    for i, j := range r.joins {
+        if j.tableAlias == join.tableAlias {
+            r.joins[i] = join
+            return
+        }
+    }
 
-	// register new join
-	r.joins = append(r.joins, join)
+    // register new join
+    r.joins = append(r.joins, join)
 }
 
 func extractNestedMapVal(m map[string]any, keys ...string) (any, error) {
-	if len(keys) == 0 {
-		return nil, fmt.Errorf("at least one key should be provided")
-	}
+    if len(keys) == 0 {
+        return nil, fmt.Errorf("at least one key should be provided")
+    }
 
-	result, ok := m[keys[0]]
-	if !ok {
-		return nil, fmt.Errorf("invalid key path - missing key %q", keys[0])
-	}
+    result, ok := m[keys[0]]
+    if !ok {
+        return nil, fmt.Errorf("invalid key path - missing key %q", keys[0])
+    }
 
-	// end key reached
-	if len(keys) == 1 {
-		return result, nil
-	}
+    // end key reached
+    if len(keys) == 1 {
+        return result, nil
+    }
 
-	if m, ok = result.(map[string]any); !ok {
-		return nil, fmt.Errorf("expected map, got %#v", result)
-	}
+    if m, ok = result.(map[string]any); !ok {
+        return nil, fmt.Errorf("expected map, got %#v", result)
+    }
 
-	return extractNestedMapVal(m, keys[1:]...)
+    return extractNestedMapVal(m, keys[1:]...)
 }
 
 func splitModifier(combined string) (string, string, error) {
-	parts := strings.Split(combined, ":")
+    parts := strings.Split(combined, ":")
 
-	if len(parts) != 2 {
-		return combined, "", nil
-	}
+    if len(parts) != 2 {
+        return combined, "", nil
+    }
 
-	// validate modifier
-	switch parts[1] {
-	case issetModifier,
-		eachModifier,
-		lengthModifier:
-		return parts[0], parts[1], nil
-	}
+    // validate modifier
+    switch parts[1] {
+    case issetModifier,
+        eachModifier,
+        lengthModifier:
+        return parts[0], parts[1], nil
+    }
 
-	return "", "", fmt.Errorf("unknown modifier in %q", combined)
+    return "", "", fmt.Errorf("unknown modifier in %q", combined)
 }

@@ -1,21 +1,21 @@
 package forms
 
 import (
-	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/civcraft-ru/pocketbase/core"
-	"github.com/civcraft-ru/pocketbase/daos"
-	"github.com/civcraft-ru/pocketbase/forms/validators"
-	"github.com/civcraft-ru/pocketbase/models"
+    validation "github.com/go-ozzo/ozzo-validation/v4"
+    "github.com/m2civ/pocketbase/core"
+    "github.com/m2civ/pocketbase/daos"
+    "github.com/m2civ/pocketbase/forms/validators"
+    "github.com/m2civ/pocketbase/models"
 )
 
 // AdminPasswordResetConfirm is an admin password reset confirmation form.
 type AdminPasswordResetConfirm struct {
-	app core.App
-	dao *daos.Dao
+    app core.App
+    dao *daos.Dao
 
-	Token           string `form:"token" json:"token"`
-	Password        string `form:"password" json:"password"`
-	PasswordConfirm string `form:"passwordConfirm" json:"passwordConfirm"`
+    Token           string `form:"token" json:"token"`
+    Password        string `form:"password" json:"password"`
+    PasswordConfirm string `form:"passwordConfirm" json:"passwordConfirm"`
 }
 
 // NewAdminPasswordResetConfirm creates a new [AdminPasswordResetConfirm]
@@ -24,10 +24,10 @@ type AdminPasswordResetConfirm struct {
 // If you want to submit the form as part of a transaction,
 // you can change the default Dao via [SetDao()].
 func NewAdminPasswordResetConfirm(app core.App) *AdminPasswordResetConfirm {
-	return &AdminPasswordResetConfirm{
-		app: app,
-		dao: app.Dao(),
-	}
+    return &AdminPasswordResetConfirm{
+        app: app,
+        dao: app.Dao(),
+    }
 }
 
 // SetDao replaces the form Dao instance with the provided one.
@@ -35,30 +35,30 @@ func NewAdminPasswordResetConfirm(app core.App) *AdminPasswordResetConfirm {
 // This is useful if you want to use a specific transaction Dao instance
 // instead of the default app.Dao().
 func (form *AdminPasswordResetConfirm) SetDao(dao *daos.Dao) {
-	form.dao = dao
+    form.dao = dao
 }
 
 // Validate makes the form validatable by implementing [validation.Validatable] interface.
 func (form *AdminPasswordResetConfirm) Validate() error {
-	return validation.ValidateStruct(form,
-		validation.Field(&form.Token, validation.Required, validation.By(form.checkToken)),
-		validation.Field(&form.Password, validation.Required, validation.Length(10, 72)),
-		validation.Field(&form.PasswordConfirm, validation.Required, validation.By(validators.Compare(form.Password))),
-	)
+    return validation.ValidateStruct(form,
+        validation.Field(&form.Token, validation.Required, validation.By(form.checkToken)),
+        validation.Field(&form.Password, validation.Required, validation.Length(10, 72)),
+        validation.Field(&form.PasswordConfirm, validation.Required, validation.By(validators.Compare(form.Password))),
+    )
 }
 
 func (form *AdminPasswordResetConfirm) checkToken(value any) error {
-	v, _ := value.(string)
-	if v == "" {
-		return nil // nothing to check
-	}
+    v, _ := value.(string)
+    if v == "" {
+        return nil // nothing to check
+    }
 
-	admin, err := form.dao.FindAdminByToken(v, form.app.Settings().AdminPasswordResetToken.Secret)
-	if err != nil || admin == nil {
-		return validation.NewError("validation_invalid_token", "Invalid or expired token.")
-	}
+    admin, err := form.dao.FindAdminByToken(v, form.app.Settings().AdminPasswordResetToken.Secret)
+    if err != nil || admin == nil {
+        return validation.NewError("validation_invalid_token", "Invalid or expired token.")
+    }
 
-	return nil
+    return nil
 }
 
 // Submit validates and submits the admin password reset confirmation form.
@@ -67,30 +67,30 @@ func (form *AdminPasswordResetConfirm) checkToken(value any) error {
 // You can optionally provide a list of InterceptorFunc to further
 // modify the form behavior before persisting it.
 func (form *AdminPasswordResetConfirm) Submit(interceptors ...InterceptorFunc[*models.Admin]) (*models.Admin, error) {
-	if err := form.Validate(); err != nil {
-		return nil, err
-	}
+    if err := form.Validate(); err != nil {
+        return nil, err
+    }
 
-	admin, err := form.dao.FindAdminByToken(
-		form.Token,
-		form.app.Settings().AdminPasswordResetToken.Secret,
-	)
-	if err != nil {
-		return nil, err
-	}
+    admin, err := form.dao.FindAdminByToken(
+        form.Token,
+        form.app.Settings().AdminPasswordResetToken.Secret,
+    )
+    if err != nil {
+        return nil, err
+    }
 
-	if err := admin.SetPassword(form.Password); err != nil {
-		return nil, err
-	}
+    if err := admin.SetPassword(form.Password); err != nil {
+        return nil, err
+    }
 
-	interceptorsErr := runInterceptors(admin, func(m *models.Admin) error {
-		admin = m
-		return form.dao.SaveAdmin(m)
-	}, interceptors...)
+    interceptorsErr := runInterceptors(admin, func(m *models.Admin) error {
+        admin = m
+        return form.dao.SaveAdmin(m)
+    }, interceptors...)
 
-	if interceptorsErr != nil {
-		return nil, interceptorsErr
-	}
+    if interceptorsErr != nil {
+        return nil, interceptorsErr
+    }
 
-	return admin, nil
+    return admin, nil
 }

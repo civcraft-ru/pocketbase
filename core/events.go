@@ -1,64 +1,64 @@
 package core
 
 import (
-	"net/http"
-	"time"
+    "net/http"
+    "time"
 
-	"github.com/labstack/echo/v5"
-	"github.com/civcraft-ru/pocketbase/daos"
-	"github.com/civcraft-ru/pocketbase/models"
-	"github.com/civcraft-ru/pocketbase/models/schema"
-	"github.com/civcraft-ru/pocketbase/models/settings"
-	"github.com/civcraft-ru/pocketbase/tools/auth"
-	"github.com/civcraft-ru/pocketbase/tools/filesystem"
-	"github.com/civcraft-ru/pocketbase/tools/hook"
-	"github.com/civcraft-ru/pocketbase/tools/mailer"
-	"github.com/civcraft-ru/pocketbase/tools/search"
-	"github.com/civcraft-ru/pocketbase/tools/subscriptions"
-	"golang.org/x/crypto/acme/autocert"
+    "github.com/labstack/echo/v5"
+    "github.com/m2civ/pocketbase/daos"
+    "github.com/m2civ/pocketbase/models"
+    "github.com/m2civ/pocketbase/models/schema"
+    "github.com/m2civ/pocketbase/models/settings"
+    "github.com/m2civ/pocketbase/tools/auth"
+    "github.com/m2civ/pocketbase/tools/filesystem"
+    "github.com/m2civ/pocketbase/tools/hook"
+    "github.com/m2civ/pocketbase/tools/mailer"
+    "github.com/m2civ/pocketbase/tools/search"
+    "github.com/m2civ/pocketbase/tools/subscriptions"
+    "golang.org/x/crypto/acme/autocert"
 )
 
 var (
-	_ hook.Tagger = (*BaseModelEvent)(nil)
-	_ hook.Tagger = (*BaseCollectionEvent)(nil)
+    _ hook.Tagger = (*BaseModelEvent)(nil)
+    _ hook.Tagger = (*BaseCollectionEvent)(nil)
 )
 
 type BaseModelEvent struct {
-	Model models.Model
+    Model models.Model
 }
 
 func (e *BaseModelEvent) Tags() []string {
-	if e.Model == nil {
-		return nil
-	}
+    if e.Model == nil {
+        return nil
+    }
 
-	if r, ok := e.Model.(*models.Record); ok && r.Collection() != nil {
-		return []string{r.Collection().Id, r.Collection().Name}
-	}
+    if r, ok := e.Model.(*models.Record); ok && r.Collection() != nil {
+        return []string{r.Collection().Id, r.Collection().Name}
+    }
 
-	return []string{e.Model.TableName()}
+    return []string{e.Model.TableName()}
 }
 
 type BaseCollectionEvent struct {
-	Collection *models.Collection
+    Collection *models.Collection
 }
 
 func (e *BaseCollectionEvent) Tags() []string {
-	if e.Collection == nil {
-		return nil
-	}
+    if e.Collection == nil {
+        return nil
+    }
 
-	tags := make([]string, 0, 2)
+    tags := make([]string, 0, 2)
 
-	if e.Collection.Id != "" {
-		tags = append(tags, e.Collection.Id)
-	}
+    if e.Collection.Id != "" {
+        tags = append(tags, e.Collection.Id)
+    }
 
-	if e.Collection.Name != "" {
-		tags = append(tags, e.Collection.Name)
-	}
+    if e.Collection.Name != "" {
+        tags = append(tags, e.Collection.Name)
+    }
 
-	return tags
+    return tags
 }
 
 // -------------------------------------------------------------------
@@ -66,23 +66,23 @@ func (e *BaseCollectionEvent) Tags() []string {
 // -------------------------------------------------------------------
 
 type BootstrapEvent struct {
-	App App
+    App App
 }
 
 type TerminateEvent struct {
-	App App
+    App App
 }
 
 type ServeEvent struct {
-	App         App
-	Router      *echo.Echo
-	Server      *http.Server
-	CertManager *autocert.Manager
+    App         App
+    Router      *echo.Echo
+    Server      *http.Server
+    CertManager *autocert.Manager
 }
 
 type ApiErrorEvent struct {
-	HttpContext echo.Context
-	Error       error
+    HttpContext echo.Context
+    Error       error
 }
 
 // -------------------------------------------------------------------
@@ -90,9 +90,9 @@ type ApiErrorEvent struct {
 // -------------------------------------------------------------------
 
 type ModelEvent struct {
-	BaseModelEvent
+    BaseModelEvent
 
-	Dao *daos.Dao
+    Dao *daos.Dao
 }
 
 // -------------------------------------------------------------------
@@ -100,19 +100,19 @@ type ModelEvent struct {
 // -------------------------------------------------------------------
 
 type MailerRecordEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	MailClient mailer.Mailer
-	Message    *mailer.Message
-	Record     *models.Record
-	Meta       map[string]any
+    MailClient mailer.Mailer
+    Message    *mailer.Message
+    Record     *models.Record
+    Meta       map[string]any
 }
 
 type MailerAdminEvent struct {
-	MailClient mailer.Mailer
-	Message    *mailer.Message
-	Admin      *models.Admin
-	Meta       map[string]any
+    MailClient mailer.Mailer
+    Message    *mailer.Message
+    Admin      *models.Admin
+    Meta       map[string]any
 }
 
 // -------------------------------------------------------------------
@@ -120,26 +120,26 @@ type MailerAdminEvent struct {
 // -------------------------------------------------------------------
 
 type RealtimeConnectEvent struct {
-	HttpContext echo.Context
-	Client      subscriptions.Client
-	IdleTimeout time.Duration
+    HttpContext echo.Context
+    Client      subscriptions.Client
+    IdleTimeout time.Duration
 }
 
 type RealtimeDisconnectEvent struct {
-	HttpContext echo.Context
-	Client      subscriptions.Client
+    HttpContext echo.Context
+    Client      subscriptions.Client
 }
 
 type RealtimeMessageEvent struct {
-	HttpContext echo.Context
-	Client      subscriptions.Client
-	Message     *subscriptions.Message
+    HttpContext echo.Context
+    Client      subscriptions.Client
+    Message     *subscriptions.Message
 }
 
 type RealtimeSubscribeEvent struct {
-	HttpContext   echo.Context
-	Client        subscriptions.Client
-	Subscriptions []string
+    HttpContext   echo.Context
+    Client        subscriptions.Client
+    Subscriptions []string
 }
 
 // -------------------------------------------------------------------
@@ -147,14 +147,14 @@ type RealtimeSubscribeEvent struct {
 // -------------------------------------------------------------------
 
 type SettingsListEvent struct {
-	HttpContext      echo.Context
-	RedactedSettings *settings.Settings
+    HttpContext      echo.Context
+    RedactedSettings *settings.Settings
 }
 
 type SettingsUpdateEvent struct {
-	HttpContext echo.Context
-	OldSettings *settings.Settings
-	NewSettings *settings.Settings
+    HttpContext echo.Context
+    OldSettings *settings.Settings
+    NewSettings *settings.Settings
 }
 
 // -------------------------------------------------------------------
@@ -162,41 +162,41 @@ type SettingsUpdateEvent struct {
 // -------------------------------------------------------------------
 
 type RecordsListEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
-	Records     []*models.Record
-	Result      *search.Result
+    HttpContext echo.Context
+    Records     []*models.Record
+    Result      *search.Result
 }
 
 type RecordViewEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
-	Record      *models.Record
+    HttpContext echo.Context
+    Record      *models.Record
 }
 
 type RecordCreateEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext   echo.Context
-	Record        *models.Record
-	UploadedFiles map[string][]*filesystem.File
+    HttpContext   echo.Context
+    Record        *models.Record
+    UploadedFiles map[string][]*filesystem.File
 }
 
 type RecordUpdateEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext   echo.Context
-	Record        *models.Record
-	UploadedFiles map[string][]*filesystem.File
+    HttpContext   echo.Context
+    Record        *models.Record
+    UploadedFiles map[string][]*filesystem.File
 }
 
 type RecordDeleteEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
-	Record      *models.Record
+    HttpContext echo.Context
+    Record      *models.Record
 }
 
 // -------------------------------------------------------------------
@@ -204,97 +204,97 @@ type RecordDeleteEvent struct {
 // -------------------------------------------------------------------
 
 type RecordAuthEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
-	Record      *models.Record
-	Token       string
-	Meta        any
+    HttpContext echo.Context
+    Record      *models.Record
+    Token       string
+    Meta        any
 }
 
 type RecordAuthWithPasswordEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
-	Record      *models.Record
-	Identity    string
-	Password    string
+    HttpContext echo.Context
+    Record      *models.Record
+    Identity    string
+    Password    string
 }
 
 type RecordAuthWithOAuth2Event struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext    echo.Context
-	ProviderName   string
-	ProviderClient auth.Provider
-	Record         *models.Record
-	OAuth2User     *auth.AuthUser
-	IsNewRecord    bool
+    HttpContext    echo.Context
+    ProviderName   string
+    ProviderClient auth.Provider
+    Record         *models.Record
+    OAuth2User     *auth.AuthUser
+    IsNewRecord    bool
 }
 
 type RecordAuthRefreshEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
-	Record      *models.Record
+    HttpContext echo.Context
+    Record      *models.Record
 }
 
 type RecordRequestPasswordResetEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
-	Record      *models.Record
+    HttpContext echo.Context
+    Record      *models.Record
 }
 
 type RecordConfirmPasswordResetEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
-	Record      *models.Record
+    HttpContext echo.Context
+    Record      *models.Record
 }
 
 type RecordRequestVerificationEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
-	Record      *models.Record
+    HttpContext echo.Context
+    Record      *models.Record
 }
 
 type RecordConfirmVerificationEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
-	Record      *models.Record
+    HttpContext echo.Context
+    Record      *models.Record
 }
 
 type RecordRequestEmailChangeEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
-	Record      *models.Record
+    HttpContext echo.Context
+    Record      *models.Record
 }
 
 type RecordConfirmEmailChangeEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
-	Record      *models.Record
+    HttpContext echo.Context
+    Record      *models.Record
 }
 
 type RecordListExternalAuthsEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext   echo.Context
-	Record        *models.Record
-	ExternalAuths []*models.ExternalAuth
+    HttpContext   echo.Context
+    Record        *models.Record
+    ExternalAuths []*models.ExternalAuth
 }
 
 type RecordUnlinkExternalAuthEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext  echo.Context
-	Record       *models.Record
-	ExternalAuth *models.ExternalAuth
+    HttpContext  echo.Context
+    Record       *models.Record
+    ExternalAuth *models.ExternalAuth
 }
 
 // -------------------------------------------------------------------
@@ -302,57 +302,57 @@ type RecordUnlinkExternalAuthEvent struct {
 // -------------------------------------------------------------------
 
 type AdminsListEvent struct {
-	HttpContext echo.Context
-	Admins      []*models.Admin
-	Result      *search.Result
+    HttpContext echo.Context
+    Admins      []*models.Admin
+    Result      *search.Result
 }
 
 type AdminViewEvent struct {
-	HttpContext echo.Context
-	Admin       *models.Admin
+    HttpContext echo.Context
+    Admin       *models.Admin
 }
 
 type AdminCreateEvent struct {
-	HttpContext echo.Context
-	Admin       *models.Admin
+    HttpContext echo.Context
+    Admin       *models.Admin
 }
 
 type AdminUpdateEvent struct {
-	HttpContext echo.Context
-	Admin       *models.Admin
+    HttpContext echo.Context
+    Admin       *models.Admin
 }
 
 type AdminDeleteEvent struct {
-	HttpContext echo.Context
-	Admin       *models.Admin
+    HttpContext echo.Context
+    Admin       *models.Admin
 }
 
 type AdminAuthEvent struct {
-	HttpContext echo.Context
-	Admin       *models.Admin
-	Token       string
+    HttpContext echo.Context
+    Admin       *models.Admin
+    Token       string
 }
 
 type AdminAuthWithPasswordEvent struct {
-	HttpContext echo.Context
-	Admin       *models.Admin
-	Identity    string
-	Password    string
+    HttpContext echo.Context
+    Admin       *models.Admin
+    Identity    string
+    Password    string
 }
 
 type AdminAuthRefreshEvent struct {
-	HttpContext echo.Context
-	Admin       *models.Admin
+    HttpContext echo.Context
+    Admin       *models.Admin
 }
 
 type AdminRequestPasswordResetEvent struct {
-	HttpContext echo.Context
-	Admin       *models.Admin
+    HttpContext echo.Context
+    Admin       *models.Admin
 }
 
 type AdminConfirmPasswordResetEvent struct {
-	HttpContext echo.Context
-	Admin       *models.Admin
+    HttpContext echo.Context
+    Admin       *models.Admin
 }
 
 // -------------------------------------------------------------------
@@ -360,38 +360,38 @@ type AdminConfirmPasswordResetEvent struct {
 // -------------------------------------------------------------------
 
 type CollectionsListEvent struct {
-	HttpContext echo.Context
-	Collections []*models.Collection
-	Result      *search.Result
+    HttpContext echo.Context
+    Collections []*models.Collection
+    Result      *search.Result
 }
 
 type CollectionViewEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
+    HttpContext echo.Context
 }
 
 type CollectionCreateEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
+    HttpContext echo.Context
 }
 
 type CollectionUpdateEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
+    HttpContext echo.Context
 }
 
 type CollectionDeleteEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
+    HttpContext echo.Context
 }
 
 type CollectionsImportEvent struct {
-	HttpContext echo.Context
-	Collections []*models.Collection
+    HttpContext echo.Context
+    Collections []*models.Collection
 }
 
 // -------------------------------------------------------------------
@@ -399,18 +399,18 @@ type CollectionsImportEvent struct {
 // -------------------------------------------------------------------
 
 type FileTokenEvent struct {
-	BaseModelEvent
+    BaseModelEvent
 
-	HttpContext echo.Context
-	Token       string
+    HttpContext echo.Context
+    Token       string
 }
 
 type FileDownloadEvent struct {
-	BaseCollectionEvent
+    BaseCollectionEvent
 
-	HttpContext echo.Context
-	Record      *models.Record
-	FileField   *schema.SchemaField
-	ServedPath  string
-	ServedName  string
+    HttpContext echo.Context
+    Record      *models.Record
+    FileField   *schema.SchemaField
+    ServedPath  string
+    ServedName  string
 }

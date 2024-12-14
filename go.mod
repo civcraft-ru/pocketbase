@@ -1,4 +1,4 @@
-module github.com/civcraft-ru/pocketbase
+module github.com/m2civ/pocketbase
 
 go 1.19
 

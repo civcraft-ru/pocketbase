@@ -1,48 +1,48 @@
 package migrations
 
 import (
-	"fmt"
+    "fmt"
 
-	"github.com/pocketbase/dbx"
-	"github.com/civcraft-ru/pocketbase/daos"
-	"github.com/civcraft-ru/pocketbase/models"
-	"github.com/civcraft-ru/pocketbase/models/schema"
+    "github.com/pocketbase/dbx"
+    "github.com/m2civ/pocketbase/daos"
+    "github.com/m2civ/pocketbase/models"
+    "github.com/m2civ/pocketbase/models/schema"
 )
 
 // Normalizes old single and multiple values of MultiValuer fields (file, select, relation).
 func init() {
-	AppMigrations.Register(func(db dbx.Builder) error {
-		return normalizeMultivaluerFields(db)
-	}, func(db dbx.Builder) error {
-		return nil
-	})
+    AppMigrations.Register(func(db dbx.Builder) error {
+        return normalizeMultivaluerFields(db)
+    }, func(db dbx.Builder) error {
+        return nil
+    })
 }
 
 func normalizeMultivaluerFields(db dbx.Builder) error {
-	dao := daos.New(db)
+    dao := daos.New(db)
 
-	collections := []*models.Collection{}
-	if err := dao.CollectionQuery().All(&collections); err != nil {
-		return err
-	}
+    collections := []*models.Collection{}
+    if err := dao.CollectionQuery().All(&collections); err != nil {
+        return err
+    }
 
-	for _, c := range collections {
-		if c.IsView() {
-			// skip view collections
-			continue
-		}
+    for _, c := range collections {
+        if c.IsView() {
+            // skip view collections
+            continue
+        }
 
-		for _, f := range c.Schema.Fields() {
-			opt, ok := f.Options.(schema.MultiValuer)
-			if !ok {
-				continue
-			}
+        for _, f := range c.Schema.Fields() {
+            opt, ok := f.Options.(schema.MultiValuer)
+            if !ok {
+                continue
+            }
 
-			var updateQuery *dbx.Query
+            var updateQuery *dbx.Query
 
-			if opt.IsMultiple() {
-				updateQuery = dao.DB().NewQuery(fmt.Sprintf(
-					`UPDATE {{%s}} set [[%s]] = (
+            if opt.IsMultiple() {
+                updateQuery = dao.DB().NewQuery(fmt.Sprintf(
+                    `UPDATE {{%s}} set [[%s]] = (
 						CASE
 							WHEN COALESCE([[%s]], '') = ''
 							THEN '[]'
@@ -55,17 +55,17 @@ func normalizeMultivaluerFields(db dbx.Builder) error {
 							)
 						END
 					)`,
-					c.Name,
-					f.Name,
-					f.Name,
-					f.Name,
-					f.Name,
-					f.Name,
-					f.Name,
-				))
-			} else {
-				updateQuery = dao.DB().NewQuery(fmt.Sprintf(
-					`UPDATE {{%s}} set [[%s]] = (
+                    c.Name,
+                    f.Name,
+                    f.Name,
+                    f.Name,
+                    f.Name,
+                    f.Name,
+                    f.Name,
+                ))
+            } else {
+                updateQuery = dao.DB().NewQuery(fmt.Sprintf(
+                    `UPDATE {{%s}} set [[%s]] = (
 						CASE
 							WHEN COALESCE([[%s]], '[]') = '[]'
 							THEN ''
@@ -78,31 +78,31 @@ func normalizeMultivaluerFields(db dbx.Builder) error {
 							)
 						END
 					)`,
-					c.Name,
-					f.Name,
-					f.Name,
-					f.Name,
-					f.Name,
-					f.Name,
-					f.Name,
-				))
-			}
+                    c.Name,
+                    f.Name,
+                    f.Name,
+                    f.Name,
+                    f.Name,
+                    f.Name,
+                    f.Name,
+                ))
+            }
 
-			if _, err := updateQuery.Execute(); err != nil {
-				return err
-			}
-		}
-	}
+            if _, err := updateQuery.Execute(); err != nil {
+                return err
+            }
+        }
+    }
 
-	// trigger view query update after the records normalization
-	// (ignore save error in case of invalid query to allow users to change it from the UI)
-	for _, c := range collections {
-		if !c.IsView() {
-			continue
-		}
+    // trigger view query update after the records normalization
+    // (ignore save error in case of invalid query to allow users to change it from the UI)
+    for _, c := range collections {
+        if !c.IsView() {
+            continue
+        }
 
-		dao.SaveCollection(c)
-	}
+        dao.SaveCollection(c)
+    }
 
-	return nil
+    return nil
 }

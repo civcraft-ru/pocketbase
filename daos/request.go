@@ -1,70 +1,70 @@
 package daos
 
 import (
-	"time"
+    "time"
 
-	"github.com/pocketbase/dbx"
-	"github.com/civcraft-ru/pocketbase/models"
-	"github.com/civcraft-ru/pocketbase/tools/types"
+    "github.com/pocketbase/dbx"
+    "github.com/m2civ/pocketbase/models"
+    "github.com/m2civ/pocketbase/tools/types"
 )
 
 // RequestQuery returns a new Request logs select query.
 func (dao *Dao) RequestQuery() *dbx.SelectQuery {
-	return dao.ModelQuery(&models.Request{})
+    return dao.ModelQuery(&models.Request{})
 }
 
 // FindRequestById finds a single Request log by its id.
 func (dao *Dao) FindRequestById(id string) (*models.Request, error) {
-	model := &models.Request{}
+    model := &models.Request{}
 
-	err := dao.RequestQuery().
-		AndWhere(dbx.HashExp{"id": id}).
-		Limit(1).
-		One(model)
+    err := dao.RequestQuery().
+        AndWhere(dbx.HashExp{"id": id}).
+        Limit(1).
+        One(model)
 
-	if err != nil {
-		return nil, err
-	}
+    if err != nil {
+        return nil, err
+    }
 
-	return model, nil
+    return model, nil
 }
 
 type RequestsStatsItem struct {
-	Total int            `db:"total" json:"total"`
-	Date  types.DateTime `db:"date" json:"date"`
+    Total int            `db:"total" json:"total"`
+    Date  types.DateTime `db:"date" json:"date"`
 }
 
 // RequestsStats returns hourly grouped requests logs statistics.
 func (dao *Dao) RequestsStats(expr dbx.Expression) ([]*RequestsStatsItem, error) {
-	result := []*RequestsStatsItem{}
+    result := []*RequestsStatsItem{}
 
-	query := dao.RequestQuery().
-		Select("count(id) as total", "strftime('%Y-%m-%d %H:00:00', created) as date").
-		GroupBy("date")
+    query := dao.RequestQuery().
+        Select("count(id) as total", "strftime('%Y-%m-%d %H:00:00', created) as date").
+        GroupBy("date")
 
-	if expr != nil {
-		query.AndWhere(expr)
-	}
+    if expr != nil {
+        query.AndWhere(expr)
+    }
 
-	err := query.All(&result)
+    err := query.All(&result)
 
-	return result, err
+    return result, err
 }
 
 // DeleteOldRequests delete all requests that are created before createdBefore.
 func (dao *Dao) DeleteOldRequests(createdBefore time.Time) error {
-	m := models.Request{}
-	tableName := m.TableName()
+    m := models.Request{}
+    tableName := m.TableName()
 
-	formattedDate := createdBefore.UTC().Format(types.DefaultDateLayout)
-	expr := dbx.NewExp("[[created]] <= {:date}", dbx.Params{"date": formattedDate})
+    formattedDate := createdBefore.UTC().Format(types.DefaultDateLayout)
+    expr := dbx.NewExp("[[created]] <= {:date}", dbx.Params{"date": formattedDate})
 
-	_, err := dao.NonconcurrentDB().Delete(tableName, expr).Execute()
+    _, err := dao.NonconcurrentDB().Delete(tableName, expr).Execute()
 
-	return err
+    return err
 }
 
 // SaveRequest upserts the provided Request model.
 func (dao *Dao) SaveRequest(request *models.Request) error {
-	return dao.Save(request)
+    return dao.Save(request)
 }

@@ -1,34 +1,34 @@
 package rest
 
 import (
-	"errors"
-	"regexp"
-	"strings"
+    "errors"
+    "regexp"
+    "strings"
 
-	"github.com/civcraft-ru/pocketbase/tools/list"
-	"github.com/spf13/cast"
-	"golang.org/x/net/html"
+    "github.com/m2civ/pocketbase/tools/list"
+    "github.com/spf13/cast"
+    "golang.org/x/net/html"
 )
 
 var whitespaceRegex = regexp.MustCompile(`\s+`)
 
 var excludeTags = []string{
-	"head", "style", "script", "iframe", "embed", "applet", "object",
-	"svg", "img", "picture", "dialog", "template", "button", "form",
-	"textarea", "input", "select", "option",
+    "head", "style", "script", "iframe", "embed", "applet", "object",
+    "svg", "img", "picture", "dialog", "template", "button", "form",
+    "textarea", "input", "select", "option",
 }
 
 var inlineTags = []string{
-	"a", "abbr", "acronym", "b", "bdo", "big", "br", "button",
-	"cite", "code", "em", "i", "label", "q", "small", "span",
-	"strong", "strike", "sub", "sup", "time",
+    "a", "abbr", "acronym", "b", "bdo", "big", "br", "button",
+    "cite", "code", "em", "i", "label", "q", "small", "span",
+    "strong", "strike", "sub", "sup", "time",
 }
 
 var _ FieldModifier = (*excerptModifier)(nil)
 
 type excerptModifier struct {
-	max          int  // approximate max excerpt length
-	withEllipsis bool // if enabled will add ellipsis when the plain text length > max
+    max          int  // approximate max excerpt length
+    withEllipsis bool // if enabled will add ellipsis when the plain text length > max
 }
 
 // newExcerptModifier validates the specified raw string arguments and
@@ -36,27 +36,27 @@ type excerptModifier struct {
 //
 // This method is usually invoked in initModifer().
 func newExcerptModifier(args ...string) (*excerptModifier, error) {
-	totalArgs := len(args)
+    totalArgs := len(args)
 
-	if totalArgs == 0 {
-		return nil, errors.New("max argument is required - expected (max, withEllipsis?)")
-	}
+    if totalArgs == 0 {
+        return nil, errors.New("max argument is required - expected (max, withEllipsis?)")
+    }
 
-	if totalArgs > 2 {
-		return nil, errors.New("too many arguments - expected (max, withEllipsis?)")
-	}
+    if totalArgs > 2 {
+        return nil, errors.New("too many arguments - expected (max, withEllipsis?)")
+    }
 
-	max := cast.ToInt(args[0])
-	if max == 0 {
-		return nil, errors.New("max argument must be > 0")
-	}
+    max := cast.ToInt(args[0])
+    if max == 0 {
+        return nil, errors.New("max argument must be > 0")
+    }
 
-	var withEllipsis bool
-	if totalArgs > 1 {
-		withEllipsis = cast.ToBool(args[1])
-	}
+    var withEllipsis bool
+    if totalArgs > 1 {
+        withEllipsis = cast.ToBool(args[1])
+    }
 
-	return &excerptModifier{max, withEllipsis}, nil
+    return &excerptModifier{max, withEllipsis}, nil
 }
 
 // Modify implements the [FieldModifier.Modify] interface method.
@@ -64,77 +64,77 @@ func newExcerptModifier(args ...string) (*excerptModifier, error) {
 // It returns a plain text excerpt/short-description from a formatted
 // html string (non-string values are kept untouched).
 func (m *excerptModifier) Modify(value any) (any, error) {
-	strValue, ok := value.(string)
-	if !ok {
-		// not a string -> return as it is without applying the modifier
-		// (we don't throw an error because the modifier could be applied for a missing expand field)
-		return value, nil
-	}
+    strValue, ok := value.(string)
+    if !ok {
+        // not a string -> return as it is without applying the modifier
+        // (we don't throw an error because the modifier could be applied for a missing expand field)
+        return value, nil
+    }
 
-	var builder strings.Builder
+    var builder strings.Builder
 
-	doc, err := html.Parse(strings.NewReader(strValue))
-	if err != nil {
-		return "", err
-	}
+    doc, err := html.Parse(strings.NewReader(strValue))
+    if err != nil {
+        return "", err
+    }
 
-	var hasPrevSpace bool
+    var hasPrevSpace bool
 
-	// for all node types and more details check
-	// https://pkg.go.dev/golang.org/x/net/html#Parse
-	var stripTags func(*html.Node)
-	stripTags = func(n *html.Node) {
-		switch n.Type {
-		case html.TextNode:
-			// collapse multiple spaces into one
-			txt := whitespaceRegex.ReplaceAllString(n.Data, " ")
+    // for all node types and more details check
+    // https://pkg.go.dev/golang.org/x/net/html#Parse
+    var stripTags func(*html.Node)
+    stripTags = func(n *html.Node) {
+        switch n.Type {
+        case html.TextNode:
+            // collapse multiple spaces into one
+            txt := whitespaceRegex.ReplaceAllString(n.Data, " ")
 
-			if hasPrevSpace {
-				txt = strings.TrimLeft(txt, " ")
-			}
+            if hasPrevSpace {
+                txt = strings.TrimLeft(txt, " ")
+            }
 
-			if txt != "" {
-				hasPrevSpace = strings.HasSuffix(txt, " ")
+            if txt != "" {
+                hasPrevSpace = strings.HasSuffix(txt, " ")
 
-				builder.WriteString(txt)
-			}
-		}
+                builder.WriteString(txt)
+            }
+        }
 
-		// excerpt max has been reached => no need to further iterate
-		// (+2 for the extra whitespace suffix/prefix that will be trimmed later)
-		if builder.Len() > m.max+2 {
-			return
-		}
+        // excerpt max has been reached => no need to further iterate
+        // (+2 for the extra whitespace suffix/prefix that will be trimmed later)
+        if builder.Len() > m.max+2 {
+            return
+        }
 
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			if c.Type != html.ElementNode || !list.ExistInSlice(c.Data, excludeTags) {
-				isBlock := c.Type == html.ElementNode && !list.ExistInSlice(c.Data, inlineTags)
+        for c := n.FirstChild; c != nil; c = c.NextSibling {
+            if c.Type != html.ElementNode || !list.ExistInSlice(c.Data, excludeTags) {
+                isBlock := c.Type == html.ElementNode && !list.ExistInSlice(c.Data, inlineTags)
 
-				if isBlock && !hasPrevSpace {
-					builder.WriteString(" ")
-					hasPrevSpace = true
-				}
+                if isBlock && !hasPrevSpace {
+                    builder.WriteString(" ")
+                    hasPrevSpace = true
+                }
 
-				stripTags(c)
+                stripTags(c)
 
-				if isBlock && !hasPrevSpace {
-					builder.WriteString(" ")
-					hasPrevSpace = true
-				}
-			}
-		}
-	}
-	stripTags(doc)
+                if isBlock && !hasPrevSpace {
+                    builder.WriteString(" ")
+                    hasPrevSpace = true
+                }
+            }
+        }
+    }
+    stripTags(doc)
 
-	result := strings.TrimSpace(builder.String())
+    result := strings.TrimSpace(builder.String())
 
-	if len(result) > m.max {
-		result = strings.TrimSpace(result[:m.max])
+    if len(result) > m.max {
+        result = strings.TrimSpace(result[:m.max])
 
-		if m.withEllipsis {
-			result += "..."
-		}
-	}
+        if m.withEllipsis {
+            result += "..."
+        }
+    }
 
-	return result, nil
+    return result, nil
 }

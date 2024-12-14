@@ -1,28 +1,28 @@
 package apis_test
 
 import (
-	"net/http"
-	"testing"
+    "net/http"
+    "testing"
 
-	"github.com/civcraft-ru/pocketbase/tests"
+    "github.com/m2civ/pocketbase/tests"
 )
 
 func TestHealthAPI(t *testing.T) {
-	scenarios := []tests.ApiScenario{
-		{
-			Name:           "health status returns 200",
-			Method:         http.MethodGet,
-			Url:            "/api/health",
-			ExpectedStatus: 200,
-			ExpectedContent: []string{
-				`"code":200`,
-				`"data":{`,
-				`"canBackup":true`,
-			},
-		},
-	}
+    scenarios := []tests.ApiScenario{
+        {
+            Name:           "health status returns 200",
+            Method:         http.MethodGet,
+            Url:            "/api/health",
+            ExpectedStatus: 200,
+            ExpectedContent: []string{
+                `"code":200`,
+                `"data":{`,
+                `"canBackup":true`,
+            },
+        },
+    }
 
-	for _, scenario := range scenarios {
-		scenario.Test(t)
-	}
+    for _, scenario := range scenarios {
+        scenario.Test(t)
+    }
 }

@@ -2,16 +2,16 @@
 package migrations
 
 import (
-	"path/filepath"
-	"runtime"
+    "path/filepath"
+    "runtime"
 
-	"github.com/pocketbase/dbx"
-	"github.com/civcraft-ru/pocketbase/daos"
-	"github.com/civcraft-ru/pocketbase/models"
-	"github.com/civcraft-ru/pocketbase/models/schema"
-	"github.com/civcraft-ru/pocketbase/models/settings"
-	"github.com/civcraft-ru/pocketbase/tools/migrate"
-	"github.com/civcraft-ru/pocketbase/tools/types"
+    "github.com/m2civ/pocketbase/daos"
+    "github.com/m2civ/pocketbase/models"
+    "github.com/m2civ/pocketbase/models/schema"
+    "github.com/m2civ/pocketbase/models/settings"
+    "github.com/m2civ/pocketbase/tools/migrate"
+    "github.com/m2civ/pocketbase/tools/types"
+    "github.com/pocketbase/dbx"
 )
 
 var AppMigrations migrate.MigrationsList
@@ -19,23 +19,23 @@ var AppMigrations migrate.MigrationsList
 // Register is a short alias for `AppMigrations.Register()`
 // that is usually used in external/user defined migrations.
 func Register(
-	up func(db dbx.Builder) error,
-	down func(db dbx.Builder) error,
-	optFilename ...string,
+    up func(db dbx.Builder) error,
+    down func(db dbx.Builder) error,
+    optFilename ...string,
 ) {
-	var optFiles []string
-	if len(optFilename) > 0 {
-		optFiles = optFilename
-	} else {
-		_, path, _, _ := runtime.Caller(1)
-		optFiles = append(optFiles, filepath.Base(path))
-	}
-	AppMigrations.Register(up, down, optFiles...)
+    var optFiles []string
+    if len(optFilename) > 0 {
+        optFiles = optFilename
+    } else {
+        _, path, _, _ := runtime.Caller(1)
+        optFiles = append(optFiles, filepath.Base(path))
+    }
+    AppMigrations.Register(up, down, optFiles...)
 }
 
 func init() {
-	AppMigrations.Register(func(db dbx.Builder) error {
-		_, tablesErr := db.NewQuery(`
+    AppMigrations.Register(func(db dbx.Builder) error {
+        _, tablesErr := db.NewQuery(`
 			CREATE TABLE {{_admins}} (
 				[[id]]              TEXT PRIMARY KEY NOT NULL,
 				[[avatar]]          INTEGER DEFAULT 0 NOT NULL,
@@ -87,84 +87,84 @@ func init() {
 			CREATE UNIQUE INDEX _externalAuths_record_provider_idx on {{_externalAuths}} ([[collectionId]], [[recordId]], [[provider]]);
 			CREATE UNIQUE INDEX _externalAuths_provider_providerId_idx on {{_externalAuths}} ([[provider]], [[providerId]]);
 		`).Execute()
-		if tablesErr != nil {
-			return tablesErr
-		}
+        if tablesErr != nil {
+            return tablesErr
+        }
 
-		dao := daos.New(db)
+        dao := daos.New(db)
 
-		// inserts default settings
-		// -----------------------------------------------------------
-		defaultSettings := settings.New()
-		if err := dao.SaveSettings(defaultSettings); err != nil {
-			return err
-		}
+        // inserts default settings
+        // -----------------------------------------------------------
+        defaultSettings := settings.New()
+        if err := dao.SaveSettings(defaultSettings); err != nil {
+            return err
+        }
 
-		// inserts the system users collection
-		// -----------------------------------------------------------
-		usersCollection := &models.Collection{}
-		usersCollection.MarkAsNew()
-		usersCollection.Id = "_pb_users_auth_"
-		usersCollection.Name = "users"
-		usersCollection.Type = models.CollectionTypeAuth
-		usersCollection.ListRule = types.Pointer("id = @request.auth.id")
-		usersCollection.ViewRule = types.Pointer("id = @request.auth.id")
-		usersCollection.CreateRule = types.Pointer("")
-		usersCollection.UpdateRule = types.Pointer("id = @request.auth.id")
-		usersCollection.DeleteRule = types.Pointer("id = @request.auth.id")
+        // inserts the system users collection
+        // -----------------------------------------------------------
+        usersCollection := &models.Collection{}
+        usersCollection.MarkAsNew()
+        usersCollection.Id = "_pb_users_auth_"
+        usersCollection.Name = "users"
+        usersCollection.Type = models.CollectionTypeAuth
+        usersCollection.ListRule = types.Pointer("id = @request.auth.id")
+        usersCollection.ViewRule = types.Pointer("id = @request.auth.id")
+        usersCollection.CreateRule = types.Pointer("")
+        usersCollection.UpdateRule = types.Pointer("id = @request.auth.id")
+        usersCollection.DeleteRule = types.Pointer("id = @request.auth.id")
 
-		// set auth options
-		usersCollection.SetOptions(models.CollectionAuthOptions{
-			ManageRule:        nil,
-			AllowOAuth2Auth:   true,
-			AllowUsernameAuth: true,
-			AllowEmailAuth:    true,
-			MinPasswordLength: 8,
-			RequireEmail:      false,
-		})
+        // set auth options
+        usersCollection.SetOptions(models.CollectionAuthOptions{
+            ManageRule:        nil,
+            AllowOAuth2Auth:   true,
+            AllowUsernameAuth: true,
+            AllowEmailAuth:    true,
+            MinPasswordLength: 8,
+            RequireEmail:      false,
+        })
 
-		// set optional default fields
-		usersCollection.Schema = schema.NewSchema(
-			&schema.SchemaField{
-				Id:      "users_name",
-				Type:    schema.FieldTypeText,
-				Name:    "name",
-				Options: &schema.TextOptions{},
-			},
-			&schema.SchemaField{
-				Id:   "users_avatar",
-				Type: schema.FieldTypeFile,
-				Name: "avatar",
-				Options: &schema.FileOptions{
-					MaxSelect: 1,
-					MaxSize:   5242880,
-					MimeTypes: []string{
-						"image/jpeg",
-						"image/png",
-						"image/svg+xml",
-						"image/gif",
-						"image/webp",
-					},
-				},
-			},
-		)
+        // set optional default fields
+        usersCollection.Schema = schema.NewSchema(
+            &schema.SchemaField{
+                Id:      "users_name",
+                Type:    schema.FieldTypeText,
+                Name:    "name",
+                Options: &schema.TextOptions{},
+            },
+            &schema.SchemaField{
+                Id:   "users_avatar",
+                Type: schema.FieldTypeFile,
+                Name: "avatar",
+                Options: &schema.FileOptions{
+                    MaxSelect: 1,
+                    MaxSize:   5242880,
+                    MimeTypes: []string{
+                        "image/jpeg",
+                        "image/png",
+                        "image/svg+xml",
+                        "image/gif",
+                        "image/webp",
+                    },
+                },
+            },
+        )
 
-		return dao.SaveCollection(usersCollection)
-	}, func(db dbx.Builder) error {
-		tables := []string{
-			"users",
-			"_externalAuths",
-			"_params",
-			"_collections",
-			"_admins",
-		}
+        return dao.SaveCollection(usersCollection)
+    }, func(db dbx.Builder) error {
+        tables := []string{
+            "users",
+            "_externalAuths",
+            "_params",
+            "_collections",
+            "_admins",
+        }
 
-		for _, name := range tables {
-			if _, err := db.DropTable(name).Execute(); err != nil {
-				return err
-			}
-		}
+        for _, name := range tables {
+            if _, err := db.DropTable(name).Execute(); err != nil {
+                return err
+            }
+        }
 
-		return nil
-	})
+        return nil
+    })
 }

@@ -1,22 +1,22 @@
 package models
 
 import (
-	"github.com/civcraft-ru/pocketbase/tools/types"
+    "github.com/m2civ/pocketbase/tools/types"
 )
 
 var _ Model = (*Param)(nil)
 
 const (
-	ParamAppSettings = "settings"
+    ParamAppSettings = "settings"
 )
 
 type Param struct {
-	BaseModel
+    BaseModel
 
-	Key   string        `db:"key" json:"key"`
-	Value types.JsonRaw `db:"value" json:"value"`
+    Key   string        `db:"key" json:"key"`
+    Value types.JsonRaw `db:"value" json:"value"`
 }
 
 func (m *Param) TableName() string {
-	return "_params"
+    return "_params"
 }

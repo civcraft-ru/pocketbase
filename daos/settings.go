@@ -1,12 +1,12 @@
 package daos
 
 import (
-	"encoding/json"
-	"errors"
+    "encoding/json"
+    "errors"
 
-	"github.com/civcraft-ru/pocketbase/models"
-	"github.com/civcraft-ru/pocketbase/models/settings"
-	"github.com/civcraft-ru/pocketbase/tools/security"
+    "github.com/m2civ/pocketbase/models"
+    "github.com/m2civ/pocketbase/models/settings"
+    "github.com/m2civ/pocketbase/tools/security"
 )
 
 // FindSettings returns and decode the serialized app settings param value.
@@ -17,47 +17,47 @@ import (
 //
 // Returns an error if it fails to decode the stored serialized param value.
 func (dao *Dao) FindSettings(optEncryptionKey ...string) (*settings.Settings, error) {
-	param, err := dao.FindParamByKey(models.ParamAppSettings)
-	if err != nil {
-		return nil, err
-	}
+    param, err := dao.FindParamByKey(models.ParamAppSettings)
+    if err != nil {
+        return nil, err
+    }
 
-	result := settings.New()
+    result := settings.New()
 
-	// try first without decryption
-	plainDecodeErr := json.Unmarshal(param.Value, result)
+    // try first without decryption
+    plainDecodeErr := json.Unmarshal(param.Value, result)
 
-	// failed, try to decrypt
-	if plainDecodeErr != nil {
-		var encryptionKey string
-		if len(optEncryptionKey) > 0 && optEncryptionKey[0] != "" {
-			encryptionKey = optEncryptionKey[0]
-		}
+    // failed, try to decrypt
+    if plainDecodeErr != nil {
+        var encryptionKey string
+        if len(optEncryptionKey) > 0 && optEncryptionKey[0] != "" {
+            encryptionKey = optEncryptionKey[0]
+        }
 
-		// load without decrypt has failed and there is no encryption key to use for decrypt
-		if encryptionKey == "" {
-			return nil, errors.New("failed to load the stored app settings - missing or invalid encryption key")
-		}
+        // load without decrypt has failed and there is no encryption key to use for decrypt
+        if encryptionKey == "" {
+            return nil, errors.New("failed to load the stored app settings - missing or invalid encryption key")
+        }
 
-		// decrypt
-		decrypted, decryptErr := security.Decrypt(string(param.Value), encryptionKey)
-		if decryptErr != nil {
-			return nil, decryptErr
-		}
+        // decrypt
+        decrypted, decryptErr := security.Decrypt(string(param.Value), encryptionKey)
+        if decryptErr != nil {
+            return nil, decryptErr
+        }
 
-		// decode again
-		decryptedDecodeErr := json.Unmarshal(decrypted, result)
-		if decryptedDecodeErr != nil {
-			return nil, decryptedDecodeErr
-		}
-	}
+        // decode again
+        decryptedDecodeErr := json.Unmarshal(decrypted, result)
+        if decryptedDecodeErr != nil {
+            return nil, decryptedDecodeErr
+        }
+    }
 
-	return result, nil
+    return result, nil
 }
 
 // SaveSettings persists the specified settings configuration.
 //
 // If optEncryptionKey is set, then the stored serialized value will be encrypted with it.
 func (dao *Dao) SaveSettings(newSettings *settings.Settings, optEncryptionKey ...string) error {
-	return dao.SaveParam(models.ParamAppSettings, newSettings, optEncryptionKey...)
+    return dao.SaveParam(models.ParamAppSettings, newSettings, optEncryptionKey...)
 }

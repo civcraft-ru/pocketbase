@@ -1,87 +1,87 @@
 package archive_test
 
 import (
-	"io/fs"
-	"os"
-	"path/filepath"
-	"testing"
+    "io/fs"
+    "os"
+    "path/filepath"
+    "testing"
 
-	"github.com/civcraft-ru/pocketbase/tools/archive"
+    "github.com/m2civ/pocketbase/tools/archive"
 )
 
 func TestExtractFailure(t *testing.T) {
-	testDir := createTestDir(t)
-	defer os.RemoveAll(testDir)
+    testDir := createTestDir(t)
+    defer os.RemoveAll(testDir)
 
-	missingZipPath := filepath.Join(os.TempDir(), "pb_missing_test.zip")
-	extractedPath := filepath.Join(os.TempDir(), "pb_zip_extract")
-	defer os.RemoveAll(extractedPath)
+    missingZipPath := filepath.Join(os.TempDir(), "pb_missing_test.zip")
+    extractedPath := filepath.Join(os.TempDir(), "pb_zip_extract")
+    defer os.RemoveAll(extractedPath)
 
-	if err := archive.Extract(missingZipPath, extractedPath); err == nil {
-		t.Fatal("Expected Extract to fail due to missing zipPath")
-	}
+    if err := archive.Extract(missingZipPath, extractedPath); err == nil {
+        t.Fatal("Expected Extract to fail due to missing zipPath")
+    }
 
-	if _, err := os.Stat(extractedPath); err == nil {
-		t.Fatalf("Expected %q to not be created", extractedPath)
-	}
+    if _, err := os.Stat(extractedPath); err == nil {
+        t.Fatalf("Expected %q to not be created", extractedPath)
+    }
 }
 
 func TestExtractSuccess(t *testing.T) {
-	testDir := createTestDir(t)
-	defer os.RemoveAll(testDir)
+    testDir := createTestDir(t)
+    defer os.RemoveAll(testDir)
 
-	zipPath := filepath.Join(os.TempDir(), "pb_test.zip")
-	defer os.RemoveAll(zipPath)
+    zipPath := filepath.Join(os.TempDir(), "pb_test.zip")
+    defer os.RemoveAll(zipPath)
 
-	extractedPath := filepath.Join(os.TempDir(), "pb_zip_extract")
-	defer os.RemoveAll(extractedPath)
+    extractedPath := filepath.Join(os.TempDir(), "pb_zip_extract")
+    defer os.RemoveAll(extractedPath)
 
-	// zip testDir content (with exclude)
-	if err := archive.Create(testDir, zipPath, "a/b/c", "test", "sub2"); err != nil {
-		t.Fatalf("Failed to create archive: %v", err)
-	}
+    // zip testDir content (with exclude)
+    if err := archive.Create(testDir, zipPath, "a/b/c", "test", "sub2"); err != nil {
+        t.Fatalf("Failed to create archive: %v", err)
+    }
 
-	if err := archive.Extract(zipPath, extractedPath); err != nil {
-		t.Fatalf("Failed to extract %q in %q", zipPath, extractedPath)
-	}
+    if err := archive.Extract(zipPath, extractedPath); err != nil {
+        t.Fatalf("Failed to extract %q in %q", zipPath, extractedPath)
+    }
 
-	availableFiles := []string{}
+    availableFiles := []string{}
 
-	walkErr := filepath.WalkDir(extractedPath, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
+    walkErr := filepath.WalkDir(extractedPath, func(path string, d fs.DirEntry, err error) error {
+        if err != nil {
+            return err
+        }
 
-		if d.IsDir() {
-			return nil
-		}
+        if d.IsDir() {
+            return nil
+        }
 
-		availableFiles = append(availableFiles, path)
+        availableFiles = append(availableFiles, path)
 
-		return nil
-	})
-	if walkErr != nil {
-		t.Fatalf("Failed to read the extracted dir: %v", walkErr)
-	}
+        return nil
+    })
+    if walkErr != nil {
+        t.Fatalf("Failed to read the extracted dir: %v", walkErr)
+    }
 
-	expectedFiles := []string{
-		filepath.Join(extractedPath, "test2"),
-		filepath.Join(extractedPath, "a/test"),
-		filepath.Join(extractedPath, "a/b/sub1"),
-	}
+    expectedFiles := []string{
+        filepath.Join(extractedPath, "test2"),
+        filepath.Join(extractedPath, "a/test"),
+        filepath.Join(extractedPath, "a/b/sub1"),
+    }
 
-	if len(availableFiles) != len(expectedFiles) {
-		t.Fatalf("Expected \n%v, \ngot \n%v", expectedFiles, availableFiles)
-	}
+    if len(availableFiles) != len(expectedFiles) {
+        t.Fatalf("Expected \n%v, \ngot \n%v", expectedFiles, availableFiles)
+    }
 
 ExpectedLoop:
-	for _, expected := range expectedFiles {
-		for _, available := range availableFiles {
-			if available == expected {
-				continue ExpectedLoop
-			}
-		}
+    for _, expected := range expectedFiles {
+        for _, available := range availableFiles {
+            if available == expected {
+                continue ExpectedLoop
+            }
+        }
 
-		t.Fatalf("Missing file %q in \n%v", expected, availableFiles)
-	}
+        t.Fatalf("Missing file %q in \n%v", expected, availableFiles)
+    }
 }

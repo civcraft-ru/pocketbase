@@ -1,15 +1,15 @@
 package logs
 
 import (
-	"github.com/pocketbase/dbx"
-	"github.com/civcraft-ru/pocketbase/tools/migrate"
+    "github.com/pocketbase/dbx"
+    "github.com/m2civ/pocketbase/tools/migrate"
 )
 
 var LogsMigrations migrate.MigrationsList
 
 func init() {
-	LogsMigrations.Register(func(db dbx.Builder) (err error) {
-		_, err = db.NewQuery(`
+    LogsMigrations.Register(func(db dbx.Builder) (err error) {
+        _, err = db.NewQuery(`
 			CREATE TABLE {{_requests}} (
 				[[id]]        TEXT PRIMARY KEY NOT NULL,
 				[[url]]       TEXT DEFAULT "" NOT NULL,
@@ -30,9 +30,9 @@ func init() {
 			CREATE INDEX _request_created_hour_idx on {{_requests}} (strftime('%Y-%m-%d %H:00:00', [[created]]));
 		`).Execute()
 
-		return err
-	}, func(db dbx.Builder) error {
-		_, err := db.DropTable("_requests").Execute()
-		return err
-	})
+        return err
+    }, func(db dbx.Builder) error {
+        _, err := db.DropTable("_requests").Execute()
+        return err
+    })
 }

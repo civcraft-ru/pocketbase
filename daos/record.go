@@ -1,22 +1,22 @@
 package daos
 
 import (
-	"context"
-	"database/sql"
-	"errors"
-	"fmt"
-	"strings"
+    "context"
+    "database/sql"
+    "errors"
+    "fmt"
+    "strings"
 
-	"github.com/pocketbase/dbx"
-	"github.com/civcraft-ru/pocketbase/models"
-	"github.com/civcraft-ru/pocketbase/models/schema"
-	"github.com/civcraft-ru/pocketbase/resolvers"
-	"github.com/civcraft-ru/pocketbase/tools/inflector"
-	"github.com/civcraft-ru/pocketbase/tools/list"
-	"github.com/civcraft-ru/pocketbase/tools/search"
-	"github.com/civcraft-ru/pocketbase/tools/security"
-	"github.com/civcraft-ru/pocketbase/tools/types"
-	"github.com/spf13/cast"
+    "github.com/pocketbase/dbx"
+    "github.com/m2civ/pocketbase/models"
+    "github.com/m2civ/pocketbase/models/schema"
+    "github.com/m2civ/pocketbase/resolvers"
+    "github.com/m2civ/pocketbase/tools/inflector"
+    "github.com/m2civ/pocketbase/tools/list"
+    "github.com/m2civ/pocketbase/tools/search"
+    "github.com/m2civ/pocketbase/tools/security"
+    "github.com/m2civ/pocketbase/tools/types"
+    "github.com/spf13/cast"
 )
 
 // RecordQuery returns a new Record select query from a collection model, id or name.
@@ -25,176 +25,176 @@ import (
 // actually exists, the generated query will be created with a cancelled context
 // and will fail once an executor (Row(), One(), All(), etc.) is called.
 func (dao *Dao) RecordQuery(collectionModelOrIdentifier any) *dbx.SelectQuery {
-	var tableName string
-	var collection *models.Collection
-	var collectionErr error
-	switch c := collectionModelOrIdentifier.(type) {
-	case *models.Collection:
-		collection = c
-		tableName = collection.Name
-	case models.Collection:
-		collection = &c
-		tableName = collection.Name
-	case string:
-		collection, collectionErr = dao.FindCollectionByNameOrId(c)
-		if collection != nil {
-			tableName = collection.Name
-		} else {
-			// update with some fake table name for easier debugging
-			tableName = "@@__missing_" + c
-		}
-	default:
-		// update with some fake table name for easier debugging
-		tableName = "@@__invalidCollectionModelOrIdentifier"
-		collectionErr = errors.New("unsupported collection identifier, must be collection model, id or name")
-	}
+    var tableName string
+    var collection *models.Collection
+    var collectionErr error
+    switch c := collectionModelOrIdentifier.(type) {
+    case *models.Collection:
+        collection = c
+        tableName = collection.Name
+    case models.Collection:
+        collection = &c
+        tableName = collection.Name
+    case string:
+        collection, collectionErr = dao.FindCollectionByNameOrId(c)
+        if collection != nil {
+            tableName = collection.Name
+        } else {
+            // update with some fake table name for easier debugging
+            tableName = "@@__missing_" + c
+        }
+    default:
+        // update with some fake table name for easier debugging
+        tableName = "@@__invalidCollectionModelOrIdentifier"
+        collectionErr = errors.New("unsupported collection identifier, must be collection model, id or name")
+    }
 
-	selectCols := fmt.Sprintf("%s.*", dao.DB().QuoteSimpleColumnName(tableName))
+    selectCols := fmt.Sprintf("%s.*", dao.DB().QuoteSimpleColumnName(tableName))
 
-	query := dao.DB().Select(selectCols).From(tableName)
+    query := dao.DB().Select(selectCols).From(tableName)
 
-	// in case of an error attach a new context and cancel it immediately with the error
-	if collectionErr != nil {
-		// @todo consider changing to WithCancelCause when upgrading
-		// the min Go requirement to 1.20, so that we can pass the error
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		query.WithContext(ctx)
-		cancelFunc()
-	}
+    // in case of an error attach a new context and cancel it immediately with the error
+    if collectionErr != nil {
+        // @todo consider changing to WithCancelCause when upgrading
+        // the min Go requirement to 1.20, so that we can pass the error
+        ctx, cancelFunc := context.WithCancel(context.Background())
+        query.WithContext(ctx)
+        cancelFunc()
+    }
 
-	return query.WithBuildHook(func(q *dbx.Query) {
-		q.WithExecHook(execLockRetry(dao.ModelQueryTimeout, dao.MaxLockRetries)).
-			WithOneHook(func(q *dbx.Query, a any, op func(b any) error) error {
-				switch v := a.(type) {
-				case *models.Record:
-					if v == nil {
-						return op(a)
-					}
+    return query.WithBuildHook(func(q *dbx.Query) {
+        q.WithExecHook(execLockRetry(dao.ModelQueryTimeout, dao.MaxLockRetries)).
+            WithOneHook(func(q *dbx.Query, a any, op func(b any) error) error {
+                switch v := a.(type) {
+                case *models.Record:
+                    if v == nil {
+                        return op(a)
+                    }
 
-					row := dbx.NullStringMap{}
-					if err := op(&row); err != nil {
-						return err
-					}
+                    row := dbx.NullStringMap{}
+                    if err := op(&row); err != nil {
+                        return err
+                    }
 
-					record := models.NewRecordFromNullStringMap(collection, row)
+                    record := models.NewRecordFromNullStringMap(collection, row)
 
-					*v = *record
+                    *v = *record
 
-					return nil
-				default:
-					return op(a)
-				}
-			}).
-			WithAllHook(func(q *dbx.Query, sliceA any, op func(sliceB any) error) error {
-				switch v := sliceA.(type) {
-				case *[]*models.Record:
-					if v == nil {
-						return op(sliceA)
-					}
+                    return nil
+                default:
+                    return op(a)
+                }
+            }).
+            WithAllHook(func(q *dbx.Query, sliceA any, op func(sliceB any) error) error {
+                switch v := sliceA.(type) {
+                case *[]*models.Record:
+                    if v == nil {
+                        return op(sliceA)
+                    }
 
-					rows := []dbx.NullStringMap{}
-					if err := op(&rows); err != nil {
-						return err
-					}
+                    rows := []dbx.NullStringMap{}
+                    if err := op(&rows); err != nil {
+                        return err
+                    }
 
-					records := models.NewRecordsFromNullStringMaps(collection, rows)
+                    records := models.NewRecordsFromNullStringMaps(collection, rows)
 
-					*v = records
+                    *v = records
 
-					return nil
-				case *[]models.Record:
-					if v == nil {
-						return op(sliceA)
-					}
+                    return nil
+                case *[]models.Record:
+                    if v == nil {
+                        return op(sliceA)
+                    }
 
-					rows := []dbx.NullStringMap{}
-					if err := op(&rows); err != nil {
-						return err
-					}
+                    rows := []dbx.NullStringMap{}
+                    if err := op(&rows); err != nil {
+                        return err
+                    }
 
-					records := models.NewRecordsFromNullStringMaps(collection, rows)
+                    records := models.NewRecordsFromNullStringMaps(collection, rows)
 
-					nonPointers := make([]models.Record, len(records))
-					for i, r := range records {
-						nonPointers[i] = *r
-					}
+                    nonPointers := make([]models.Record, len(records))
+                    for i, r := range records {
+                        nonPointers[i] = *r
+                    }
 
-					*v = nonPointers
+                    *v = nonPointers
 
-					return nil
-				default:
-					return op(sliceA)
-				}
-			})
-	})
+                    return nil
+                default:
+                    return op(sliceA)
+                }
+            })
+    })
 }
 
 // FindRecordById finds the Record model by its id.
 func (dao *Dao) FindRecordById(
-	collectionNameOrId string,
-	recordId string,
-	optFilters ...func(q *dbx.SelectQuery) error,
+    collectionNameOrId string,
+    recordId string,
+    optFilters ...func(q *dbx.SelectQuery) error,
 ) (*models.Record, error) {
-	collection, err := dao.FindCollectionByNameOrId(collectionNameOrId)
-	if err != nil {
-		return nil, err
-	}
+    collection, err := dao.FindCollectionByNameOrId(collectionNameOrId)
+    if err != nil {
+        return nil, err
+    }
 
-	query := dao.RecordQuery(collection).
-		AndWhere(dbx.HashExp{collection.Name + ".id": recordId})
+    query := dao.RecordQuery(collection).
+        AndWhere(dbx.HashExp{collection.Name + ".id": recordId})
 
-	for _, filter := range optFilters {
-		if filter == nil {
-			continue
-		}
-		if err := filter(query); err != nil {
-			return nil, err
-		}
-	}
+    for _, filter := range optFilters {
+        if filter == nil {
+            continue
+        }
+        if err := filter(query); err != nil {
+            return nil, err
+        }
+    }
 
-	record := &models.Record{}
+    record := &models.Record{}
 
-	if err := query.Limit(1).One(record); err != nil {
-		return nil, err
-	}
+    if err := query.Limit(1).One(record); err != nil {
+        return nil, err
+    }
 
-	return record, nil
+    return record, nil
 }
 
 // FindRecordsByIds finds all Record models by the provided ids.
 // If no records are found, returns an empty slice.
 func (dao *Dao) FindRecordsByIds(
-	collectionNameOrId string,
-	recordIds []string,
-	optFilters ...func(q *dbx.SelectQuery) error,
+    collectionNameOrId string,
+    recordIds []string,
+    optFilters ...func(q *dbx.SelectQuery) error,
 ) ([]*models.Record, error) {
-	collection, err := dao.FindCollectionByNameOrId(collectionNameOrId)
-	if err != nil {
-		return nil, err
-	}
+    collection, err := dao.FindCollectionByNameOrId(collectionNameOrId)
+    if err != nil {
+        return nil, err
+    }
 
-	query := dao.RecordQuery(collection).
-		AndWhere(dbx.In(
-			collection.Name+".id",
-			list.ToInterfaceSlice(recordIds)...,
-		))
+    query := dao.RecordQuery(collection).
+        AndWhere(dbx.In(
+            collection.Name+".id",
+            list.ToInterfaceSlice(recordIds)...,
+        ))
 
-	for _, filter := range optFilters {
-		if filter == nil {
-			continue
-		}
-		if err := filter(query); err != nil {
-			return nil, err
-		}
-	}
+    for _, filter := range optFilters {
+        if filter == nil {
+            continue
+        }
+        if err := filter(query); err != nil {
+            return nil, err
+        }
+    }
 
-	records := make([]*models.Record, 0, len(recordIds))
+    records := make([]*models.Record, 0, len(recordIds))
 
-	if err := query.All(&records); err != nil {
-		return nil, err
-	}
+    if err := query.All(&records); err != nil {
+        return nil, err
+    }
 
-	return records, nil
+    return records, nil
 }
 
 // @todo consider to depricate as it may be easier to just use dao.RecordQuery()
@@ -211,42 +211,42 @@ func (dao *Dao) FindRecordsByIds(
 //	expr2 := dbx.NewExp("LOWER(username) = {:username}", dbx.Params{"username": "test"})
 //	dao.FindRecordsByExpr("example", expr1, expr2)
 func (dao *Dao) FindRecordsByExpr(collectionNameOrId string, exprs ...dbx.Expression) ([]*models.Record, error) {
-	query := dao.RecordQuery(collectionNameOrId)
+    query := dao.RecordQuery(collectionNameOrId)
 
-	// add only the non-nil expressions
-	for _, expr := range exprs {
-		if expr != nil {
-			query.AndWhere(expr)
-		}
-	}
+    // add only the non-nil expressions
+    for _, expr := range exprs {
+        if expr != nil {
+            query.AndWhere(expr)
+        }
+    }
 
-	var records []*models.Record
+    var records []*models.Record
 
-	if err := query.All(&records); err != nil {
-		return nil, err
-	}
+    if err := query.All(&records); err != nil {
+        return nil, err
+    }
 
-	return records, nil
+    return records, nil
 }
 
 // FindFirstRecordByData returns the first found record matching
 // the provided key-value pair.
 func (dao *Dao) FindFirstRecordByData(
-	collectionNameOrId string,
-	key string,
-	value any,
+    collectionNameOrId string,
+    key string,
+    value any,
 ) (*models.Record, error) {
-	record := &models.Record{}
+    record := &models.Record{}
 
-	err := dao.RecordQuery(collectionNameOrId).
-		AndWhere(dbx.HashExp{inflector.Columnify(key): value}).
-		Limit(1).
-		One(record)
-	if err != nil {
-		return nil, err
-	}
+    err := dao.RecordQuery(collectionNameOrId).
+        AndWhere(dbx.HashExp{inflector.Columnify(key): value}).
+        Limit(1).
+        One(record)
+    if err != nil {
+        return nil, err
+    }
 
-	return record, nil
+    return record, nil
 }
 
 // FindRecordsByFilter returns limit number of records matching the
@@ -271,65 +271,65 @@ func (dao *Dao) FindFirstRecordByData(
 //		dbx.Params{"title": "lorem ipsum", "visible": true}
 //	)
 func (dao *Dao) FindRecordsByFilter(
-	collectionNameOrId string,
-	filter string,
-	sort string,
-	limit int,
-	offset int,
-	params ...dbx.Params,
+    collectionNameOrId string,
+    filter string,
+    sort string,
+    limit int,
+    offset int,
+    params ...dbx.Params,
 ) ([]*models.Record, error) {
-	collection, err := dao.FindCollectionByNameOrId(collectionNameOrId)
-	if err != nil {
-		return nil, err
-	}
+    collection, err := dao.FindCollectionByNameOrId(collectionNameOrId)
+    if err != nil {
+        return nil, err
+    }
 
-	q := dao.RecordQuery(collection)
+    q := dao.RecordQuery(collection)
 
-	// build a fields resolver and attach the generated conditions to the query
-	// ---
-	resolver := resolvers.NewRecordFieldResolver(
-		dao,
-		collection, // the base collection
-		nil,        // no request data
-		true,       // allow searching hidden/protected fields like "email"
-	)
+    // build a fields resolver and attach the generated conditions to the query
+    // ---
+    resolver := resolvers.NewRecordFieldResolver(
+        dao,
+        collection, // the base collection
+        nil,        // no request data
+        true,       // allow searching hidden/protected fields like "email"
+    )
 
-	expr, err := search.FilterData(filter).BuildExpr(resolver, params...)
-	if err != nil || expr == nil {
-		return nil, errors.New("invalid or empty filter expression")
-	}
-	q.AndWhere(expr)
+    expr, err := search.FilterData(filter).BuildExpr(resolver, params...)
+    if err != nil || expr == nil {
+        return nil, errors.New("invalid or empty filter expression")
+    }
+    q.AndWhere(expr)
 
-	if sort != "" {
-		for _, sortField := range search.ParseSortFromString(sort) {
-			expr, err := sortField.BuildExpr(resolver)
-			if err != nil {
-				return nil, err
-			}
-			if expr != "" {
-				q.AndOrderBy(expr)
-			}
-		}
-	}
+    if sort != "" {
+        for _, sortField := range search.ParseSortFromString(sort) {
+            expr, err := sortField.BuildExpr(resolver)
+            if err != nil {
+                return nil, err
+            }
+            if expr != "" {
+                q.AndOrderBy(expr)
+            }
+        }
+    }
 
-	resolver.UpdateQuery(q) // attaches any adhoc joins and aliases
-	// ---
+    resolver.UpdateQuery(q) // attaches any adhoc joins and aliases
+    // ---
 
-	if offset > 0 {
-		q.Offset(int64(offset))
-	}
+    if offset > 0 {
+        q.Offset(int64(offset))
+    }
 
-	if limit > 0 {
-		q.Limit(int64(limit))
-	}
+    if limit > 0 {
+        q.Limit(int64(limit))
+    }
 
-	records := []*models.Record{}
+    records := []*models.Record{}
 
-	if err := q.All(&records); err != nil {
-		return nil, err
-	}
+    if err := q.All(&records); err != nil {
+        return nil, err
+    }
 
-	return records, nil
+    return records, nil
 }
 
 // FindFirstRecordByFilter returns the first available record matching the provided filter.
@@ -340,20 +340,20 @@ func (dao *Dao) FindRecordsByFilter(
 //
 //	dao.FindFirstRecordByFilter("posts", "slug={:slug} && status='public'", dbx.Params{"slug": "test"})
 func (dao *Dao) FindFirstRecordByFilter(
-	collectionNameOrId string,
-	filter string,
-	params ...dbx.Params,
+    collectionNameOrId string,
+    filter string,
+    params ...dbx.Params,
 ) (*models.Record, error) {
-	result, err := dao.FindRecordsByFilter(collectionNameOrId, filter, "", 1, 0, params...)
-	if err != nil {
-		return nil, err
-	}
+    result, err := dao.FindRecordsByFilter(collectionNameOrId, filter, "", 1, 0, params...)
+    if err != nil {
+        return nil, err
+    }
 
-	if len(result) == 0 {
-		return nil, sql.ErrNoRows
-	}
+    if len(result) == 0 {
+        return nil, sql.ErrNoRows
+    }
 
-	return result[0], nil
+    return result[0], nil
 }
 
 // IsRecordValueUnique checks if the provided key-value pair is a unique Record value.
@@ -366,134 +366,134 @@ func (dao *Dao) FindFirstRecordByFilter(
 // depends on the elements order. Or in other words the following values
 // are considered different: `[]string{"a","b"}` and `[]string{"b","a"}`
 func (dao *Dao) IsRecordValueUnique(
-	collectionNameOrId string,
-	key string,
-	value any,
-	excludeIds ...string,
+    collectionNameOrId string,
+    key string,
+    value any,
+    excludeIds ...string,
 ) bool {
-	collection, err := dao.FindCollectionByNameOrId(collectionNameOrId)
-	if err != nil {
-		return false
-	}
+    collection, err := dao.FindCollectionByNameOrId(collectionNameOrId)
+    if err != nil {
+        return false
+    }
 
-	var expr dbx.Expression
-	if collection.IsAuth() && key == schema.FieldNameUsername {
-		expr = dbx.NewExp("LOWER([["+schema.FieldNameUsername+"]])={:username}", dbx.Params{
-			"username": strings.ToLower(cast.ToString(value)),
-		})
-	} else {
-		var normalizedVal any
-		switch val := value.(type) {
-		case []string:
-			normalizedVal = append(types.JsonArray[string]{}, val...)
-		case []any:
-			normalizedVal = append(types.JsonArray[any]{}, val...)
-		default:
-			normalizedVal = val
-		}
+    var expr dbx.Expression
+    if collection.IsAuth() && key == schema.FieldNameUsername {
+        expr = dbx.NewExp("LOWER([["+schema.FieldNameUsername+"]])={:username}", dbx.Params{
+            "username": strings.ToLower(cast.ToString(value)),
+        })
+    } else {
+        var normalizedVal any
+        switch val := value.(type) {
+        case []string:
+            normalizedVal = append(types.JsonArray[string]{}, val...)
+        case []any:
+            normalizedVal = append(types.JsonArray[any]{}, val...)
+        default:
+            normalizedVal = val
+        }
 
-		expr = dbx.HashExp{inflector.Columnify(key): normalizedVal}
-	}
+        expr = dbx.HashExp{inflector.Columnify(key): normalizedVal}
+    }
 
-	query := dao.RecordQuery(collection).
-		Select("count(*)").
-		AndWhere(expr).
-		Limit(1)
+    query := dao.RecordQuery(collection).
+        Select("count(*)").
+        AndWhere(expr).
+        Limit(1)
 
-	if uniqueExcludeIds := list.NonzeroUniques(excludeIds); len(uniqueExcludeIds) > 0 {
-		query.AndWhere(dbx.NotIn(collection.Name+".id", list.ToInterfaceSlice(uniqueExcludeIds)...))
-	}
+    if uniqueExcludeIds := list.NonzeroUniques(excludeIds); len(uniqueExcludeIds) > 0 {
+        query.AndWhere(dbx.NotIn(collection.Name+".id", list.ToInterfaceSlice(uniqueExcludeIds)...))
+    }
 
-	var exists bool
+    var exists bool
 
-	return query.Row(&exists) == nil && !exists
+    return query.Row(&exists) == nil && !exists
 }
 
 // FindAuthRecordByToken finds the auth record associated with the provided JWT token.
 //
 // Returns an error if the JWT token is invalid, expired or not associated to an auth collection record.
 func (dao *Dao) FindAuthRecordByToken(token string, baseTokenKey string) (*models.Record, error) {
-	unverifiedClaims, err := security.ParseUnverifiedJWT(token)
-	if err != nil {
-		return nil, err
-	}
+    unverifiedClaims, err := security.ParseUnverifiedJWT(token)
+    if err != nil {
+        return nil, err
+    }
 
-	// check required claims
-	id, _ := unverifiedClaims["id"].(string)
-	collectionId, _ := unverifiedClaims["collectionId"].(string)
-	if id == "" || collectionId == "" {
-		return nil, errors.New("missing or invalid token claims")
-	}
+    // check required claims
+    id, _ := unverifiedClaims["id"].(string)
+    collectionId, _ := unverifiedClaims["collectionId"].(string)
+    if id == "" || collectionId == "" {
+        return nil, errors.New("missing or invalid token claims")
+    }
 
-	record, err := dao.FindRecordById(collectionId, id)
-	if err != nil {
-		return nil, err
-	}
+    record, err := dao.FindRecordById(collectionId, id)
+    if err != nil {
+        return nil, err
+    }
 
-	if !record.Collection().IsAuth() {
-		return nil, errors.New("The token is not associated to an auth collection record.")
-	}
+    if !record.Collection().IsAuth() {
+        return nil, errors.New("The token is not associated to an auth collection record.")
+    }
 
-	verificationKey := record.TokenKey() + baseTokenKey
+    verificationKey := record.TokenKey() + baseTokenKey
 
-	// verify token signature
-	if _, err := security.ParseJWT(token, verificationKey); err != nil {
-		return nil, err
-	}
+    // verify token signature
+    if _, err := security.ParseJWT(token, verificationKey); err != nil {
+        return nil, err
+    }
 
-	return record, nil
+    return record, nil
 }
 
 // FindAuthRecordByEmail finds the auth record associated with the provided email.
 //
 // Returns an error if it is not an auth collection or the record is not found.
 func (dao *Dao) FindAuthRecordByEmail(collectionNameOrId string, email string) (*models.Record, error) {
-	collection, err := dao.FindCollectionByNameOrId(collectionNameOrId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch auth collection %q (%w)", collectionNameOrId, err)
-	}
-	if !collection.IsAuth() {
-		return nil, fmt.Errorf("%q is not an auth collection", collectionNameOrId)
-	}
+    collection, err := dao.FindCollectionByNameOrId(collectionNameOrId)
+    if err != nil {
+        return nil, fmt.Errorf("failed to fetch auth collection %q (%w)", collectionNameOrId, err)
+    }
+    if !collection.IsAuth() {
+        return nil, fmt.Errorf("%q is not an auth collection", collectionNameOrId)
+    }
 
-	record := &models.Record{}
+    record := &models.Record{}
 
-	err = dao.RecordQuery(collection).
-		AndWhere(dbx.HashExp{schema.FieldNameEmail: email}).
-		Limit(1).
-		One(record)
-	if err != nil {
-		return nil, err
-	}
+    err = dao.RecordQuery(collection).
+        AndWhere(dbx.HashExp{schema.FieldNameEmail: email}).
+        Limit(1).
+        One(record)
+    if err != nil {
+        return nil, err
+    }
 
-	return record, nil
+    return record, nil
 }
 
 // FindAuthRecordByUsername finds the auth record associated with the provided username (case insensitive).
 //
 // Returns an error if it is not an auth collection or the record is not found.
 func (dao *Dao) FindAuthRecordByUsername(collectionNameOrId string, username string) (*models.Record, error) {
-	collection, err := dao.FindCollectionByNameOrId(collectionNameOrId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch auth collection %q (%w)", collectionNameOrId, err)
-	}
-	if !collection.IsAuth() {
-		return nil, fmt.Errorf("%q is not an auth collection", collectionNameOrId)
-	}
+    collection, err := dao.FindCollectionByNameOrId(collectionNameOrId)
+    if err != nil {
+        return nil, fmt.Errorf("failed to fetch auth collection %q (%w)", collectionNameOrId, err)
+    }
+    if !collection.IsAuth() {
+        return nil, fmt.Errorf("%q is not an auth collection", collectionNameOrId)
+    }
 
-	record := &models.Record{}
+    record := &models.Record{}
 
-	err = dao.RecordQuery(collection).
-		AndWhere(dbx.NewExp("LOWER([["+schema.FieldNameUsername+"]])={:username}", dbx.Params{
-			"username": strings.ToLower(username),
-		})).
-		Limit(1).
-		One(record)
-	if err != nil {
-		return nil, err
-	}
+    err = dao.RecordQuery(collection).
+        AndWhere(dbx.NewExp("LOWER([["+schema.FieldNameUsername+"]])={:username}", dbx.Params{
+            "username": strings.ToLower(username),
+        })).
+        Limit(1).
+        One(record)
+    if err != nil {
+        return nil, err
+    }
 
-	return record, nil
+    return record, nil
 }
 
 // SuggestUniqueAuthRecordUsername checks if the provided username is unique
@@ -502,26 +502,26 @@ func (dao *Dao) FindAuthRecordByUsername(collectionNameOrId string, username str
 //
 // The same username will be returned if the provided string is already unique.
 func (dao *Dao) SuggestUniqueAuthRecordUsername(
-	collectionNameOrId string,
-	baseUsername string,
-	excludeIds ...string,
+    collectionNameOrId string,
+    baseUsername string,
+    excludeIds ...string,
 ) string {
-	username := baseUsername
+    username := baseUsername
 
-	for i := 0; i < 10; i++ { // max 10 attempts
-		isUnique := dao.IsRecordValueUnique(
-			collectionNameOrId,
-			schema.FieldNameUsername,
-			username,
-			excludeIds...,
-		)
-		if isUnique {
-			break // already unique
-		}
-		username = baseUsername + security.RandomStringWithAlphabet(3+i, "123456789")
-	}
+    for i := 0; i < 10; i++ { // max 10 attempts
+        isUnique := dao.IsRecordValueUnique(
+            collectionNameOrId,
+            schema.FieldNameUsername,
+            username,
+            excludeIds...,
+        )
+        if isUnique {
+            break // already unique
+        }
+        username = baseUsername + security.RandomStringWithAlphabet(3+i, "123456789")
+    }
 
-	return username
+    return username
 }
 
 // CanAccessRecord checks if a record is allowed to be accessed by the
@@ -543,41 +543,41 @@ func (dao *Dao) SuggestUniqueAuthRecordUsername(
 //
 //	if ok, _ := dao.CanAccessRecord(record, requestInfo, rule); ok { ... }
 func (dao *Dao) CanAccessRecord(record *models.Record, requestInfo *models.RequestInfo, accessRule *string) (bool, error) {
-	if requestInfo.Admin != nil {
-		// admins can access everything
-		return true, nil
-	}
+    if requestInfo.Admin != nil {
+        // admins can access everything
+        return true, nil
+    }
 
-	if accessRule == nil {
-		// only admins can access this record
-		return false, nil
-	}
+    if accessRule == nil {
+        // only admins can access this record
+        return false, nil
+    }
 
-	if *accessRule == "" {
-		// empty public rule, aka. everyone can access
-		return true, nil
-	}
+    if *accessRule == "" {
+        // empty public rule, aka. everyone can access
+        return true, nil
+    }
 
-	var exists bool
+    var exists bool
 
-	query := dao.RecordQuery(record.Collection()).
-		Select("(1)").
-		AndWhere(dbx.HashExp{record.Collection().Name + ".id": record.Id})
+    query := dao.RecordQuery(record.Collection()).
+        Select("(1)").
+        AndWhere(dbx.HashExp{record.Collection().Name + ".id": record.Id})
 
-	// parse and apply the access rule filter
-	resolver := resolvers.NewRecordFieldResolver(dao, record.Collection(), requestInfo, true)
-	expr, err := search.FilterData(*accessRule).BuildExpr(resolver)
-	if err != nil {
-		return false, err
-	}
-	resolver.UpdateQuery(query)
-	query.AndWhere(expr)
+    // parse and apply the access rule filter
+    resolver := resolvers.NewRecordFieldResolver(dao, record.Collection(), requestInfo, true)
+    expr, err := search.FilterData(*accessRule).BuildExpr(resolver)
+    if err != nil {
+        return false, err
+    }
+    resolver.UpdateQuery(query)
+    query.AndWhere(expr)
 
-	if err := query.Limit(1).Row(&exists); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return false, err
-	}
+    if err := query.Limit(1).Row(&exists); err != nil && !errors.Is(err, sql.ErrNoRows) {
+        return false, err
+    }
 
-	return exists, nil
+    return exists, nil
 }
 
 // SaveRecord persists the provided Record model in the database.
@@ -585,29 +585,29 @@ func (dao *Dao) CanAccessRecord(record *models.Record, requestInfo *models.Reque
 // If record.IsNew() is true, the method will perform a create, otherwise an update.
 // To explicitly mark a record for update you can use record.MarkAsNotNew().
 func (dao *Dao) SaveRecord(record *models.Record) error {
-	if record.Collection().IsAuth() {
-		if record.Username() == "" {
-			return errors.New("unable to save auth record without username")
-		}
+    if record.Collection().IsAuth() {
+        if record.Username() == "" {
+            return errors.New("unable to save auth record without username")
+        }
 
-		// Cross-check that the auth record id is unique for all auth collections.
-		// This is to make sure that the filter `@request.auth.id` always returns a unique id.
-		authCollections, err := dao.FindCollectionsByType(models.CollectionTypeAuth)
-		if err != nil {
-			return fmt.Errorf("unable to fetch the auth collections for cross-id unique check: %w", err)
-		}
-		for _, collection := range authCollections {
-			if record.Collection().Id == collection.Id {
-				continue // skip current collection (sqlite will do the check for us)
-			}
-			isUnique := dao.IsRecordValueUnique(collection.Id, schema.FieldNameId, record.Id)
-			if !isUnique {
-				return errors.New("the auth record ID must be unique across all auth collections")
-			}
-		}
-	}
+        // Cross-check that the auth record id is unique for all auth collections.
+        // This is to make sure that the filter `@request.auth.id` always returns a unique id.
+        authCollections, err := dao.FindCollectionsByType(models.CollectionTypeAuth)
+        if err != nil {
+            return fmt.Errorf("unable to fetch the auth collections for cross-id unique check: %w", err)
+        }
+        for _, collection := range authCollections {
+            if record.Collection().Id == collection.Id {
+                continue // skip current collection (sqlite will do the check for us)
+            }
+            isUnique := dao.IsRecordValueUnique(collection.Id, schema.FieldNameId, record.Id)
+            if !isUnique {
+                return errors.New("the auth record ID must be unique across all auth collections")
+            }
+        }
+    }
 
-	return dao.Save(record)
+    return dao.Save(record)
 }
 
 // DeleteRecord deletes the provided Record model.
@@ -618,102 +618,102 @@ func (dao *Dao) SaveRecord(record *models.Record) error {
 // The delete operation may fail if the record is part of a required
 // reference in another record (aka. cannot be deleted or unset).
 func (dao *Dao) DeleteRecord(record *models.Record) error {
-	// fetch rel references (if any)
-	//
-	// note: the select is outside of the transaction to minimize
-	// SQLITE_BUSY errors when mixing read&write in a single transaction
-	refs, err := dao.FindCollectionReferences(record.Collection())
-	if err != nil {
-		return err
-	}
+    // fetch rel references (if any)
+    //
+    // note: the select is outside of the transaction to minimize
+    // SQLITE_BUSY errors when mixing read&write in a single transaction
+    refs, err := dao.FindCollectionReferences(record.Collection())
+    if err != nil {
+        return err
+    }
 
-	return dao.RunInTransaction(func(txDao *Dao) error {
-		// manually trigger delete on any linked external auth to ensure
-		// that the `OnModel*` hooks are triggered
-		if record.Collection().IsAuth() {
-			// note: the select is outside of the transaction to minimize
-			// SQLITE_BUSY errors when mixing read&write in a single transaction
-			externalAuths, err := dao.FindAllExternalAuthsByRecord(record)
-			if err != nil {
-				return err
-			}
-			for _, auth := range externalAuths {
-				if err := txDao.DeleteExternalAuth(auth); err != nil {
-					return err
-				}
-			}
-		}
+    return dao.RunInTransaction(func(txDao *Dao) error {
+        // manually trigger delete on any linked external auth to ensure
+        // that the `OnModel*` hooks are triggered
+        if record.Collection().IsAuth() {
+            // note: the select is outside of the transaction to minimize
+            // SQLITE_BUSY errors when mixing read&write in a single transaction
+            externalAuths, err := dao.FindAllExternalAuthsByRecord(record)
+            if err != nil {
+                return err
+            }
+            for _, auth := range externalAuths {
+                if err := txDao.DeleteExternalAuth(auth); err != nil {
+                    return err
+                }
+            }
+        }
 
-		// delete the record before the relation references to ensure that there
-		// will be no "A<->B" relations to prevent deadlock when calling DeleteRecord recursively
-		if err := txDao.Delete(record); err != nil {
-			return err
-		}
+        // delete the record before the relation references to ensure that there
+        // will be no "A<->B" relations to prevent deadlock when calling DeleteRecord recursively
+        if err := txDao.Delete(record); err != nil {
+            return err
+        }
 
-		return txDao.cascadeRecordDelete(record, refs)
-	})
+        return txDao.cascadeRecordDelete(record, refs)
+    })
 }
 
 // cascadeRecordDelete triggers cascade deletion for the provided references.
 //
 // NB! This method is expected to be called inside a transaction.
 func (dao *Dao) cascadeRecordDelete(mainRecord *models.Record, refs map[*models.Collection][]*schema.SchemaField) error {
-	uniqueJsonEachAlias := "__je__" + security.PseudorandomString(4)
+    uniqueJsonEachAlias := "__je__" + security.PseudorandomString(4)
 
-	for refCollection, fields := range refs {
-		if refCollection.IsView() {
-			continue // skip view collections
-		}
+    for refCollection, fields := range refs {
+        if refCollection.IsView() {
+            continue // skip view collections
+        }
 
-		for _, field := range fields {
-			recordTableName := inflector.Columnify(refCollection.Name)
-			prefixedFieldName := recordTableName + "." + inflector.Columnify(field.Name)
+        for _, field := range fields {
+            recordTableName := inflector.Columnify(refCollection.Name)
+            prefixedFieldName := recordTableName + "." + inflector.Columnify(field.Name)
 
-			query := dao.RecordQuery(refCollection).Distinct(true)
+            query := dao.RecordQuery(refCollection).Distinct(true)
 
-			if opt, ok := field.Options.(schema.MultiValuer); !ok || !opt.IsMultiple() {
-				query.AndWhere(dbx.HashExp{prefixedFieldName: mainRecord.Id})
-			} else {
-				query.InnerJoin(fmt.Sprintf(
-					`json_each(CASE WHEN json_valid([[%s]]) THEN [[%s]] ELSE json_array([[%s]]) END) as {{%s}}`,
-					prefixedFieldName, prefixedFieldName, prefixedFieldName, uniqueJsonEachAlias,
-				), dbx.HashExp{uniqueJsonEachAlias + ".value": mainRecord.Id})
-			}
+            if opt, ok := field.Options.(schema.MultiValuer); !ok || !opt.IsMultiple() {
+                query.AndWhere(dbx.HashExp{prefixedFieldName: mainRecord.Id})
+            } else {
+                query.InnerJoin(fmt.Sprintf(
+                    `json_each(CASE WHEN json_valid([[%s]]) THEN [[%s]] ELSE json_array([[%s]]) END) as {{%s}}`,
+                    prefixedFieldName, prefixedFieldName, prefixedFieldName, uniqueJsonEachAlias,
+                ), dbx.HashExp{uniqueJsonEachAlias + ".value": mainRecord.Id})
+            }
 
-			if refCollection.Id == mainRecord.Collection().Id {
-				query.AndWhere(dbx.Not(dbx.HashExp{recordTableName + ".id": mainRecord.Id}))
-			}
+            if refCollection.Id == mainRecord.Collection().Id {
+                query.AndWhere(dbx.Not(dbx.HashExp{recordTableName + ".id": mainRecord.Id}))
+            }
 
-			// trigger cascade for each batchSize rel items until there is none
-			batchSize := 4000
-			rows := make([]dbx.NullStringMap, 0, batchSize)
-			for {
-				if err := query.Limit(int64(batchSize)).All(&rows); err != nil {
-					return err
-				}
+            // trigger cascade for each batchSize rel items until there is none
+            batchSize := 4000
+            rows := make([]dbx.NullStringMap, 0, batchSize)
+            for {
+                if err := query.Limit(int64(batchSize)).All(&rows); err != nil {
+                    return err
+                }
 
-				total := len(rows)
-				if total == 0 {
-					break
-				}
+                total := len(rows)
+                if total == 0 {
+                    break
+                }
 
-				refRecords := models.NewRecordsFromNullStringMaps(refCollection, rows)
+                refRecords := models.NewRecordsFromNullStringMaps(refCollection, rows)
 
-				err := dao.deleteRefRecords(mainRecord, refRecords, field)
-				if err != nil {
-					return err
-				}
+                err := dao.deleteRefRecords(mainRecord, refRecords, field)
+                if err != nil {
+                    return err
+                }
 
-				if total < batchSize {
-					break // no more items
-				}
+                if total < batchSize {
+                    break // no more items
+                }
 
-				rows = rows[:0] // keep allocated memory
-			}
-		}
-	}
+                rows = rows[:0] // keep allocated memory
+            }
+        }
+    }
 
-	return nil
+    return nil
 }
 
 // deleteRefRecords checks if related records has to be deleted (if `CascadeDelete` is set)
@@ -722,42 +722,42 @@ func (dao *Dao) cascadeRecordDelete(mainRecord *models.Record, refs map[*models.
 //
 // NB! This method is expected to be called inside a transaction.
 func (dao *Dao) deleteRefRecords(mainRecord *models.Record, refRecords []*models.Record, field *schema.SchemaField) error {
-	options, _ := field.Options.(*schema.RelationOptions)
-	if options == nil {
-		return errors.New("relation field options are not initialized")
-	}
+    options, _ := field.Options.(*schema.RelationOptions)
+    if options == nil {
+        return errors.New("relation field options are not initialized")
+    }
 
-	for _, refRecord := range refRecords {
-		ids := refRecord.GetStringSlice(field.Name)
+    for _, refRecord := range refRecords {
+        ids := refRecord.GetStringSlice(field.Name)
 
-		// unset the record id
-		for i := len(ids) - 1; i >= 0; i-- {
-			if ids[i] == mainRecord.Id {
-				ids = append(ids[:i], ids[i+1:]...)
-				break
-			}
-		}
+        // unset the record id
+        for i := len(ids) - 1; i >= 0; i-- {
+            if ids[i] == mainRecord.Id {
+                ids = append(ids[:i], ids[i+1:]...)
+                break
+            }
+        }
 
-		// cascade delete the reference
-		// (only if there are no other active references in case of multiple select)
-		if options.CascadeDelete && len(ids) == 0 {
-			if err := dao.DeleteRecord(refRecord); err != nil {
-				return err
-			}
-			// no further actions are needed (the reference is deleted)
-			continue
-		}
+        // cascade delete the reference
+        // (only if there are no other active references in case of multiple select)
+        if options.CascadeDelete && len(ids) == 0 {
+            if err := dao.DeleteRecord(refRecord); err != nil {
+                return err
+            }
+            // no further actions are needed (the reference is deleted)
+            continue
+        }
 
-		if field.Required && len(ids) == 0 {
-			return fmt.Errorf("the record cannot be deleted because it is part of a required reference in record %s (%s collection)", refRecord.Id, refRecord.Collection().Name)
-		}
+        if field.Required && len(ids) == 0 {
+            return fmt.Errorf("the record cannot be deleted because it is part of a required reference in record %s (%s collection)", refRecord.Id, refRecord.Collection().Name)
+        }
 
-		// save the reference changes
-		refRecord.Set(field.Name, field.PrepareValue(ids))
-		if err := dao.SaveRecord(refRecord); err != nil {
-			return err
-		}
-	}
+        // save the reference changes
+        refRecord.Set(field.Name, field.PrepareValue(ids))
+        if err := dao.SaveRecord(refRecord); err != nil {
+            return err
+        }
+    }
 
-	return nil
+    return nil
 }

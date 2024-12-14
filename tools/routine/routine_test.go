@@ -1,27 +1,27 @@
 package routine_test
 
 import (
-	"sync"
-	"testing"
+    "sync"
+    "testing"
 
-	"github.com/civcraft-ru/pocketbase/tools/routine"
+    "github.com/m2civ/pocketbase/tools/routine"
 )
 
 func TestFireAndForget(t *testing.T) {
-	called := false
+    called := false
 
-	fn := func() {
-		called = true
-		panic("test")
-	}
+    fn := func() {
+        called = true
+        panic("test")
+    }
 
-	wg := &sync.WaitGroup{}
+    wg := &sync.WaitGroup{}
 
-	routine.FireAndForget(fn, wg)
+    routine.FireAndForget(fn, wg)
 
-	wg.Wait()
+    wg.Wait()
 
-	if !called {
-		t.Error("Expected fn to be called.")
-	}
+    if !called {
+        t.Error("Expected fn to be called.")
+    }
 }

@@ -1,20 +1,20 @@
 package migrations
 
 import (
-	"github.com/pocketbase/dbx"
+    "github.com/pocketbase/dbx"
 )
 
 // Cleanup dangling deleted collections references
-// (see https://github.com/civcraft-ru/pocketbase/discussions/2570).
+// (see https://github.com/m2civ/pocketbase/discussions/2570).
 func init() {
-	AppMigrations.Register(func(db dbx.Builder) error {
-		_, err := db.NewQuery(`
+    AppMigrations.Register(func(db dbx.Builder) error {
+        _, err := db.NewQuery(`
 			DELETE FROM {{_externalAuths}}
 			WHERE [[collectionId]] NOT IN (SELECT [[id]] FROM {{_collections}})
 		`).Execute()
 
-		return err
-	}, func(db dbx.Builder) error {
-		return nil
-	})
+        return err
+    }, func(db dbx.Builder) error {
+        return nil
+    })
 }

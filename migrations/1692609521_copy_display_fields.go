@@ -1,10 +1,10 @@
 package migrations
 
 import (
-	"github.com/civcraft-ru/pocketbase/daos"
-	"github.com/civcraft-ru/pocketbase/models"
-	"github.com/civcraft-ru/pocketbase/models/schema"
-	"github.com/pocketbase/dbx"
+    "github.com/m2civ/pocketbase/daos"
+    "github.com/m2civ/pocketbase/models"
+    "github.com/m2civ/pocketbase/models/schema"
+    "github.com/pocketbase/dbx"
 )
 
 // Copy the now deprecated RelationOptions.DisplayFields values from
@@ -14,49 +14,49 @@ import (
 // If there is more than one relation to a single collection with explicitly
 // set DisplayFields only one of the configuration will be copied.
 func init() {
-	AppMigrations.Register(func(db dbx.Builder) error {
-		dao := daos.New(db)
+    AppMigrations.Register(func(db dbx.Builder) error {
+        dao := daos.New(db)
 
-		collections := []*models.Collection{}
-		if err := dao.CollectionQuery().All(&collections); err != nil {
-			return err
-		}
+        collections := []*models.Collection{}
+        if err := dao.CollectionQuery().All(&collections); err != nil {
+            return err
+        }
 
-		indexedCollections := make(map[string]*models.Collection, len(collections))
-		for _, collection := range collections {
-			indexedCollections[collection.Id] = collection
-		}
+        indexedCollections := make(map[string]*models.Collection, len(collections))
+        for _, collection := range collections {
+            indexedCollections[collection.Id] = collection
+        }
 
-		for _, collection := range indexedCollections {
-			for _, f := range collection.Schema.Fields() {
-				if f.Type != schema.FieldTypeRelation {
-					continue
-				}
+        for _, collection := range indexedCollections {
+            for _, f := range collection.Schema.Fields() {
+                if f.Type != schema.FieldTypeRelation {
+                    continue
+                }
 
-				options, ok := f.Options.(*schema.RelationOptions)
-				if !ok || len(options.DisplayFields) == 0 {
-					continue
-				}
+                options, ok := f.Options.(*schema.RelationOptions)
+                if !ok || len(options.DisplayFields) == 0 {
+                    continue
+                }
 
-				relCollection, ok := indexedCollections[options.CollectionId]
-				if !ok {
-					continue
-				}
+                relCollection, ok := indexedCollections[options.CollectionId]
+                if !ok {
+                    continue
+                }
 
-				for _, name := range options.DisplayFields {
-					relField := relCollection.Schema.GetFieldByName(name)
-					if relField != nil {
-						relField.Presentable = true
-					}
-				}
+                for _, name := range options.DisplayFields {
+                    relField := relCollection.Schema.GetFieldByName(name)
+                    if relField != nil {
+                        relField.Presentable = true
+                    }
+                }
 
-				// only raw model save
-				if err := dao.Save(relCollection); err != nil {
-					return err
-				}
-			}
-		}
+                // only raw model save
+                if err := dao.Save(relCollection); err != nil {
+                    return err
+                }
+            }
+        }
 
-		return nil
-	}, nil)
+        return nil
+    }, nil)
 }

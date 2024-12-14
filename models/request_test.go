@@ -1,14 +1,14 @@
 package models_test
 
 import (
-	"testing"
+    "testing"
 
-	"github.com/civcraft-ru/pocketbase/models"
+    "github.com/m2civ/pocketbase/models"
 )
 
 func TestRequestTableName(t *testing.T) {
-	m := models.Request{}
-	if m.TableName() != "_requests" {
-		t.Fatalf("Unexpected table name, got %q", m.TableName())
-	}
+    m := models.Request{}
+    if m.TableName() != "_requests" {
+        t.Fatalf("Unexpected table name, got %q", m.TableName())
+    }
 }
