@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
+	"github.com/m2civ/pocketbase/core"
+	"github.com/m2civ/pocketbase/tests"
 )
 
 func testFieldBaseMethods(t *testing.T, fieldType string) {

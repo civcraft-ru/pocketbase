@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pocketbase/pocketbase/apis"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
-	"github.com/pocketbase/pocketbase/tools/router"
-	"github.com/pocketbase/pocketbase/tools/types"
+	"github.com/m2civ/pocketbase/apis"
+	"github.com/m2civ/pocketbase/core"
+	"github.com/m2civ/pocketbase/tests"
+	"github.com/m2civ/pocketbase/tools/router"
+	"github.com/m2civ/pocketbase/tools/types"
 )
 
 func TestRecordCrudList(t *testing.T) {

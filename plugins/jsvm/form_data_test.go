@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pocketbase/pocketbase/tools/filesystem"
-	"github.com/pocketbase/pocketbase/tools/list"
+	"github.com/m2civ/pocketbase/tools/filesystem"
+	"github.com/m2civ/pocketbase/tools/list"
 )
 
 func TestFormDataAppendAndSet(t *testing.T) {

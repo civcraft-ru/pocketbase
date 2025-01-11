@@ -6,8 +6,8 @@ import (
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/list"
+	"github.com/m2civ/pocketbase/core"
+	"github.com/m2civ/pocketbase/tools/list"
 )
 
 func recordAuthWithPassword(e *core.RequestEvent) error {

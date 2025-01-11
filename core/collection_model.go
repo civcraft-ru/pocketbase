@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/m2civ/pocketbase/tools/dbutils"
+	"github.com/m2civ/pocketbase/tools/hook"
+	"github.com/m2civ/pocketbase/tools/security"
+	"github.com/m2civ/pocketbase/tools/types"
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/tools/dbutils"
-	"github.com/pocketbase/pocketbase/tools/hook"
-	"github.com/pocketbase/pocketbase/tools/security"
-	"github.com/pocketbase/pocketbase/tools/types"
 	"github.com/spf13/cast"
 )
 

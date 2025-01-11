@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pocketbase/pocketbase/apis"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/hook"
+	"github.com/m2civ/pocketbase/apis"
+	"github.com/m2civ/pocketbase/core"
+	"github.com/m2civ/pocketbase/tools/hook"
 )
 
 // ApiScenario defines a single api request test case/scenario.

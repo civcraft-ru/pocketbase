@@ -10,14 +10,14 @@ import (
 	"time"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/m2civ/pocketbase/core"
+	"github.com/m2civ/pocketbase/tools/hook"
+	"github.com/m2civ/pocketbase/tools/picker"
+	"github.com/m2civ/pocketbase/tools/router"
+	"github.com/m2civ/pocketbase/tools/routine"
+	"github.com/m2civ/pocketbase/tools/search"
+	"github.com/m2civ/pocketbase/tools/subscriptions"
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/hook"
-	"github.com/pocketbase/pocketbase/tools/picker"
-	"github.com/pocketbase/pocketbase/tools/router"
-	"github.com/pocketbase/pocketbase/tools/routine"
-	"github.com/pocketbase/pocketbase/tools/search"
-	"github.com/pocketbase/pocketbase/tools/subscriptions"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -56,7 +56,7 @@ func realtimeConnect(e *core.RequestEvent) error {
 
 	e.Response.Header().Set("Content-Type", "text/event-stream")
 	e.Response.Header().Set("Cache-Control", "no-store")
-	// https://github.com/pocketbase/pocketbase/discussions/480#discussioncomment-3657640
+	// https://github.com/m2civ/pocketbase/discussions/480#discussioncomment-3657640
 	// https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering
 	e.Response.Header().Set("X-Accel-Buffering", "no")
 

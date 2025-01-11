@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/m2civ/pocketbase/core"
+	"github.com/m2civ/pocketbase/tests"
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
 )
 
 func TestHasTable(t *testing.T) {

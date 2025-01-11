@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
-	"github.com/pocketbase/pocketbase/tools/types"
+	"github.com/m2civ/pocketbase/core"
+	"github.com/m2civ/pocketbase/tests"
+	"github.com/m2civ/pocketbase/tools/types"
 )
 
 func TestNewExternalAuth(t *testing.T) {

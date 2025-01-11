@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/pocketbase/pocketbase/tools/router"
+	"github.com/m2civ/pocketbase/tools/router"
 )
 
 type unwrapTester struct {

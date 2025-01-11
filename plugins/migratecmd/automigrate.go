@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/m2civ/pocketbase/core"
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/core"
 )
 
 // automigrateOnCollectionChange handles the automigration snapshot

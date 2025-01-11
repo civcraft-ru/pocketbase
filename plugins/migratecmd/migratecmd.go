@@ -24,8 +24,8 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/inflector"
+	"github.com/m2civ/pocketbase/core"
+	"github.com/m2civ/pocketbase/tools/inflector"
 	"github.com/spf13/cobra"
 )
 

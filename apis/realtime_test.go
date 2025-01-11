@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/m2civ/pocketbase/apis"
+	"github.com/m2civ/pocketbase/core"
+	"github.com/m2civ/pocketbase/tests"
+	"github.com/m2civ/pocketbase/tools/subscriptions"
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/apis"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
-	"github.com/pocketbase/pocketbase/tools/subscriptions"
 )
 
 func TestRealtimeConnect(t *testing.T) {

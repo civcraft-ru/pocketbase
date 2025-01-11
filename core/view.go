@@ -7,11 +7,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/m2civ/pocketbase/tools/dbutils"
+	"github.com/m2civ/pocketbase/tools/inflector"
+	"github.com/m2civ/pocketbase/tools/security"
+	"github.com/m2civ/pocketbase/tools/tokenizer"
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/tools/dbutils"
-	"github.com/pocketbase/pocketbase/tools/inflector"
-	"github.com/pocketbase/pocketbase/tools/security"
-	"github.com/pocketbase/pocketbase/tools/tokenizer"
 )
 
 // DeleteView drops the specified view name.

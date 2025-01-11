@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/router"
+	"github.com/m2civ/pocketbase/core"
+	"github.com/m2civ/pocketbase/tools/router"
 )
 
 // StaticWildcardParam is the name of Static handler wildcard parameter.

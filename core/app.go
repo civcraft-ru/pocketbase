@@ -8,13 +8,13 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/m2civ/pocketbase/tools/cron"
+	"github.com/m2civ/pocketbase/tools/filesystem"
+	"github.com/m2civ/pocketbase/tools/hook"
+	"github.com/m2civ/pocketbase/tools/mailer"
+	"github.com/m2civ/pocketbase/tools/store"
+	"github.com/m2civ/pocketbase/tools/subscriptions"
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/tools/cron"
-	"github.com/pocketbase/pocketbase/tools/filesystem"
-	"github.com/pocketbase/pocketbase/tools/hook"
-	"github.com/pocketbase/pocketbase/tools/mailer"
-	"github.com/pocketbase/pocketbase/tools/store"
-	"github.com/pocketbase/pocketbase/tools/subscriptions"
 )
 
 // App defines the main PocketBase app interface.

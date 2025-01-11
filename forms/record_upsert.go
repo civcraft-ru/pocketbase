@@ -7,10 +7,10 @@ import (
 	"slices"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/m2civ/pocketbase/core"
+	"github.com/m2civ/pocketbase/core/validators"
+	"github.com/m2civ/pocketbase/tools/security"
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/core/validators"
-	"github.com/pocketbase/pocketbase/tools/security"
 	"github.com/spf13/cast"
 )
 

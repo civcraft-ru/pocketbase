@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/pocketbase/pocketbase/tools/routine"
+	"github.com/m2civ/pocketbase/tools/routine"
 )
 
 func TestFireAndForget(t *testing.T) {

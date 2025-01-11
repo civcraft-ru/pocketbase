@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pocketbase/pocketbase/tools/security"
+	"github.com/m2civ/pocketbase/tools/security"
 )
 
 func TestS256Challenge(t *testing.T) {

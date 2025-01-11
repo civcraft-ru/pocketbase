@@ -1,4 +1,4 @@
-module github.com/pocketbase/pocketbase
+module github.com/m2civ/pocketbase
 
 go 1.23
 

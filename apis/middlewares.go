@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/hook"
-	"github.com/pocketbase/pocketbase/tools/list"
-	"github.com/pocketbase/pocketbase/tools/router"
-	"github.com/pocketbase/pocketbase/tools/routine"
+	"github.com/m2civ/pocketbase/core"
+	"github.com/m2civ/pocketbase/tools/hook"
+	"github.com/m2civ/pocketbase/tools/list"
+	"github.com/m2civ/pocketbase/tools/router"
+	"github.com/m2civ/pocketbase/tools/routine"
 	"github.com/spf13/cast"
 )
 

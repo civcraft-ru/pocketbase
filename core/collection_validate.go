@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/m2civ/pocketbase/core/validators"
+	"github.com/m2civ/pocketbase/tools/dbutils"
+	"github.com/m2civ/pocketbase/tools/list"
+	"github.com/m2civ/pocketbase/tools/search"
+	"github.com/m2civ/pocketbase/tools/types"
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/core/validators"
-	"github.com/pocketbase/pocketbase/tools/dbutils"
-	"github.com/pocketbase/pocketbase/tools/list"
-	"github.com/pocketbase/pocketbase/tools/search"
-	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 var collectionNameRegex = regexp.MustCompile(`^\w+$`)

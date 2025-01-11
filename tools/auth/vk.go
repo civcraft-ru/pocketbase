@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pocketbase/pocketbase/tools/types"
+	"github.com/m2civ/pocketbase/tools/types"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/vk"
 )

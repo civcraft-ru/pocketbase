@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
-	"github.com/pocketbase/pocketbase/tools/auth"
-	"github.com/pocketbase/pocketbase/tools/types"
+	"github.com/m2civ/pocketbase/core"
+	"github.com/m2civ/pocketbase/tests"
+	"github.com/m2civ/pocketbase/tools/auth"
+	"github.com/m2civ/pocketbase/tools/types"
 )
 
 func TestCollectionAuthOptionsValidate(t *testing.T) {

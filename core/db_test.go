@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/m2civ/pocketbase/core"
+	"github.com/m2civ/pocketbase/tests"
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tests"
 )
 
 func TestGenerateDefaultRandomId(t *testing.T) {

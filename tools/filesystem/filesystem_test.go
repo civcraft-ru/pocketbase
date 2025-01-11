@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pocketbase/pocketbase/tools/filesystem"
+	"github.com/m2civ/pocketbase/tools/filesystem"
 )
 
 func TestFileSystemExists(t *testing.T) {

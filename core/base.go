@@ -16,16 +16,16 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/m2civ/pocketbase/tools/cron"
+	"github.com/m2civ/pocketbase/tools/filesystem"
+	"github.com/m2civ/pocketbase/tools/hook"
+	"github.com/m2civ/pocketbase/tools/logger"
+	"github.com/m2civ/pocketbase/tools/mailer"
+	"github.com/m2civ/pocketbase/tools/routine"
+	"github.com/m2civ/pocketbase/tools/store"
+	"github.com/m2civ/pocketbase/tools/subscriptions"
+	"github.com/m2civ/pocketbase/tools/types"
 	"github.com/pocketbase/dbx"
-	"github.com/pocketbase/pocketbase/tools/cron"
-	"github.com/pocketbase/pocketbase/tools/filesystem"
-	"github.com/pocketbase/pocketbase/tools/hook"
-	"github.com/pocketbase/pocketbase/tools/logger"
-	"github.com/pocketbase/pocketbase/tools/mailer"
-	"github.com/pocketbase/pocketbase/tools/routine"
-	"github.com/pocketbase/pocketbase/tools/store"
-	"github.com/pocketbase/pocketbase/tools/subscriptions"
-	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 const (
@@ -1166,7 +1166,7 @@ func normalizeSQLLog(sql string) string {
 
 func (app *BaseApp) initAuxDB() error {
 	// note: renamed to "auxiliary" because "aux" is a reserved Windows filename
-	// (see https://github.com/pocketbase/pocketbase/issues/5607)
+	// (see https://github.com/m2civ/pocketbase/issues/5607)
 	dbPath := filepath.Join(app.DataDir(), "auxiliary.db")
 
 	concurrentDB, err := app.config.DBConnect(dbPath)
@@ -1213,7 +1213,7 @@ func (app *BaseApp) registerBaseHooks() {
 		Func: func(e *ModelEvent) error {
 			if m, ok := e.Model.(FilesManager); ok && m.BaseFilesPath() != "" {
 				// ensure that there is a trailing slash so that the list iterator could start walking from the prefix dir
-				// (https://github.com/pocketbase/pocketbase/discussions/5246#discussioncomment-10128955)
+				// (https://github.com/m2civ/pocketbase/discussions/5246#discussioncomment-10128955)
 				prefix := strings.TrimRight(m.BaseFilesPath(), "/") + "/"
 
 				// run in the background for "optimistic" delete to avoid

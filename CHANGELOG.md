@@ -7,7 +7,8 @@
 
 ## v0.24.2
 
-- Fixed display fields extraction when there are multiple "Presentable" `relation` fields in a single related collection ([#6229](https://github.com/pocketbase/pocketbase/issues/6229)).
+- Fixed display fields extraction when there are multiple "Presentable" `relation` fields in a single related
+  collection ([#6229](https://github.com/m2civ/pocketbase/issues/6229)).
 
 
 ## v0.24.1
@@ -20,11 +21,15 @@
 ## v0.24.0
 
 - ⚠️ Removed the "dry submit" when executing the collections Create API rule
-    (you can find more details why this change was introduced and how it could affect your app in https://github.com/pocketbase/pocketbase/discussions/6073).
+  (you can find more details why this change was introduced and how it could affect your app
+  in https://github.com/m2civ/pocketbase/discussions/6073).
     For most users it should be non-breaking change, BUT if you have Create API rules that uses self-references or view counters you may have to adjust them manually.
     With this change the "multi-match" operators are also normalized in case the targeted collection doesn't have any records
     (_or in other words, `@collection.example.someField != "test"` will result to `true` if `example` collection has no records because it satisfies the condition that all available "example" records mustn't have `someField` equal to "test"_).
-    As a side-effect of all of the above minor changes, the record create API performance has been also improved ~4x times in high concurrent scenarios (500 concurrent clients inserting total of 50k records - [old (58.409064001s)](https://github.com/pocketbase/benchmarks/blob/54140be5fb0102f90034e1370c7f168fbcf0ddf0/results/hetzner_cax41_cgo.md#creating-50000-posts100k-reqs50000-conc500-rulerequestauthid----requestdatapublicisset--true) vs [new (13.580098262s)](https://github.com/pocketbase/benchmarks/blob/7df0466ac9bd62fe0a1056270d20ef82012f0234/results/hetzner_cax41_cgo.md#creating-50000-posts100k-reqs50000-conc500-rulerequestauthid----requestbodypublicisset--true)).
+  As a side-effect of all of the above minor changes, the record create API performance has been also improved ~4x times
+  in high concurrent scenarios (500 concurrent clients inserting total of 50k
+  records - [old (58.409064001s)](https://github.com/m2civ/benchmarks/blob/54140be5fb0102f90034e1370c7f168fbcf0ddf0/results/hetzner_cax41_cgo.md#creating-50000-posts100k-reqs50000-conc500-rulerequestauthid----requestdatapublicisset--true)
+  vs [new (13.580098262s)](https://github.com/m2civ/benchmarks/blob/7df0466ac9bd62fe0a1056270d20ef82012f0234/results/hetzner_cax41_cgo.md#creating-50000-posts100k-reqs50000-conc500-rulerequestauthid----requestbodypublicisset--true)).
 
 - ⚠️ Changed the type definition of `store.Store[T any]` to `store.Store[K comparable, T any]` to allow support for custom store key types.
     For most users it should be non-breaking change, BUT if you are calling `store.New[any](nil)` instances you'll have to specify the store key type, aka. `store.New[string, any](nil)`.
@@ -37,7 +42,8 @@
 
 - Added cache for the JSVM `arrayOf(m)`, `DynamicModel`, etc. dynamic `reflect` created types.
 
-- Added auth collection select for the settings "Send test email" popup ([#6166](https://github.com/pocketbase/pocketbase/issues/6166)).
+- Added auth collection select for the settings "Send test email"
+  popup ([#6166](https://github.com/m2civ/pocketbase/issues/6166)).
 
 - Added `record.SetRandomPassword()` to simplify random password generation usually used in the OAuth2 or OTP record creation flows.
     _The generated ~30 chars random password is assigned directly as bcrypt hash and ignores the `password` field plain value validators like min/max length or regex pattern._
@@ -52,20 +58,24 @@
 
 - Added `tests.NewTestAppWithConfig(config)` helper if you need more control over the test configurations like `IsDev`, the number of allowed connections, etc.
 
-- Invalidate all record tokens when the auth record email is changed programmatically or by a superuser ([#5964](https://github.com/pocketbase/pocketbase/issues/5964)).
+- Invalidate all record tokens when the auth record email is changed programmatically or by a
+  superuser ([#5964](https://github.com/m2civ/pocketbase/issues/5964)).
 
 - Eagerly interrupt waiting for the email alert send in case it takes longer than 15s.
 
 - Normalized the hidden fields filter checks and allow targetting hidden fields in the List API rule.
 
-- Fixed "Unique identify fields" input not refreshing on unique indexes change ([#6184](https://github.com/pocketbase/pocketbase/issues/6184)).
+- Fixed "Unique identify fields" input not refreshing on unique indexes
+  change ([#6184](https://github.com/m2civ/pocketbase/issues/6184)).
 
 
 ## v0.23.12
 
-- Added warning logs in case of mismatched `modernc.org/sqlite` and `modernc.org/libc` versions ([#6136](https://github.com/pocketbase/pocketbase/issues/6136#issuecomment-2556336962)).
+- Added warning logs in case of mismatched `modernc.org/sqlite` and `modernc.org/libc`
+  versions ([#6136](https://github.com/m2civ/pocketbase/issues/6136#issuecomment-2556336962)).
 
-- Skipped the default body size limit middleware for the backup upload endpoint ([#6152](https://github.com/pocketbase/pocketbase/issues/6152)).
+- Skipped the default body size limit middleware for the backup upload
+  endpoint ([#6152](https://github.com/m2civ/pocketbase/issues/6152)).
 
 
 ## v0.23.11
@@ -76,7 +86,8 @@
 
 ## v0.23.10
 
-- Renew the superuser file token cache when clicking on the thumb preview or download link ([#6137](https://github.com/pocketbase/pocketbase/discussions/6137)).
+- Renew the superuser file token cache when clicking on the thumb preview or download
+  link ([#6137](https://github.com/m2civ/pocketbase/discussions/6137)).
 
 - Upgraded `modernc.org/sqlite` to 1.34.3 to fix "disk io" error on arm64 systems.
     _If you are extending PocketBase with Go and upgrading with `go get -u` make sure to manually set in your go.mod the `modernc.org/libc` indirect dependency to v1.55.3, aka. the exact same version the driver is using._
@@ -84,28 +95,34 @@
 
 ## v0.23.9
 
-- Replaced `strconv.Itoa` with `strconv.FormatInt` to avoid the int64->int conversion overflow on 32-bit platforms ([#6132](https://github.com/pocketbase/pocketbase/discussions/6132)).
+- Replaced `strconv.Itoa` with `strconv.FormatInt` to avoid the int64->int conversion overflow on 32-bit
+  platforms ([#6132](https://github.com/m2civ/pocketbase/discussions/6132)).
 
 
 ## v0.23.8
 
-- Fixed Model->Record and Model->Collection hook events sync for nested and/or inner-hook transactions ([#6122](https://github.com/pocketbase/pocketbase/discussions/6122)).
+- Fixed Model->Record and Model->Collection hook events sync for nested and/or inner-hook
+  transactions ([#6122](https://github.com/m2civ/pocketbase/discussions/6122)).
 
 - Other minor improvements (updated Go and npm deps, added extra escaping for the default mail record params in case the emails are stored as html files, fixed code comment typos, etc.).
 
 
 ## v0.23.7
 
-- Fixed JSVM exception -> Go error unwrapping when throwing errors from non-request hooks ([#6102](https://github.com/pocketbase/pocketbase/discussions/6102)).
+- Fixed JSVM exception -> Go error unwrapping when throwing errors from non-request
+  hooks ([#6102](https://github.com/m2civ/pocketbase/discussions/6102)).
 
 
 ## v0.23.6
 
-- Fixed `$filesystem.fileFromURL` documentation and generated type ([#6058](https://github.com/pocketbase/pocketbase/issues/6058)).
+- Fixed `$filesystem.fileFromURL` documentation and generated
+  type ([#6058](https://github.com/m2civ/pocketbase/issues/6058)).
 
-- Fixed `X-Forwarded-For` header typo in the suggested UI "Common trusted proxy" headers ([#6063](https://github.com/pocketbase/pocketbase/pull/6063)).
+- Fixed `X-Forwarded-For` header typo in the suggested UI "Common trusted proxy"
+  headers ([#6063](https://github.com/m2civ/pocketbase/pull/6063)).
 
-- Updated the `text` field max length validator error message to make it more clear ([#6066](https://github.com/pocketbase/pocketbase/issues/6066)).
+- Updated the `text` field max length validator error message to make it more
+  clear ([#6066](https://github.com/m2civ/pocketbase/issues/6066)).
 
 - Other minor fixes (updated Go deps, skipped unnecessary validator check when the default primary key pattern is used, updated JSVM types, etc.).
 
@@ -114,7 +131,7 @@
 
 - Fixed UI logs search not properly accounting for the "Include requests by superusers" toggle when multiple search expressions are used.
 
-- Fixed `text` field max validation error message ([#6053](https://github.com/pocketbase/pocketbase/issues/6053)).
+- Fixed `text` field max validation error message ([#6053](https://github.com/m2civ/pocketbase/issues/6053)).
 
 - Other minor fixes (comment typos, JSVM types update).
 
@@ -123,11 +140,14 @@
 
 ## v0.23.4
 
-- Fixed `autodate` fields not refreshing when calling `Save` multiple times on the same `Record` instance ([#6000](https://github.com/pocketbase/pocketbase/issues/6000)).
+- Fixed `autodate` fields not refreshing when calling `Save` multiple times on the same `Record`
+  instance ([#6000](https://github.com/m2civ/pocketbase/issues/6000)).
 
-- Added more descriptive test OTP id and failure log message ([#5982](https://github.com/pocketbase/pocketbase/discussions/5982)).
+- Added more descriptive test OTP id and failure log
+  message ([#5982](https://github.com/m2civ/pocketbase/discussions/5982)).
 
-- Moved the default UI CSP from meta tag to response header ([#5995](https://github.com/pocketbase/pocketbase/discussions/5995)).
+- Moved the default UI CSP from meta tag to response
+  header ([#5995](https://github.com/m2civ/pocketbase/discussions/5995)).
 
 - Updated Go and npm dependencies.
 
@@ -136,12 +156,13 @@
 
 - Fixed Gzip middleware not applying when serving static files.
 
-- Fixed `Record.Fresh()`/`Record.Clone()` methods not properly cloning `autodate` fields ([#5973](https://github.com/pocketbase/pocketbase/discussions/5973)).
+- Fixed `Record.Fresh()`/`Record.Clone()` methods not properly cloning `autodate`
+  fields ([#5973](https://github.com/m2civ/pocketbase/discussions/5973)).
 
 
 ## v0.23.2
 
-- Fixed `RecordQuery()` custom struct scanning ([#5958](https://github.com/pocketbase/pocketbase/discussions/5958)).
+- Fixed `RecordQuery()` custom struct scanning ([#5958](https://github.com/m2civ/pocketbase/discussions/5958)).
 
 - Fixed `--dev` log query print formatting.
 
@@ -153,7 +174,8 @@
 
 ## v0.23.1
 
-- Added `RequestEvent.Blob(status, contentType, bytes)` response write helper ([#5940](https://github.com/pocketbase/pocketbase/discussions/5940)).
+- Added `RequestEvent.Blob(status, contentType, bytes)` response write
+  helper ([#5940](https://github.com/m2civ/pocketbase/discussions/5940)).
 
 - Added more descriptive error messages.
 
@@ -203,11 +225,12 @@ There are a lot of changes but to highlight some of the most notable ones:
 - One-Time Password (OTP) auth method (_via email code_).
 - Multi-Factor Authentication (MFA) support (_currently requires any 2 different auth methods to be used_).
 - Support for Record "proxy/projection" in preparation for the planned autogeneration of typed Go record models.
-- Linear OAuth2 provider ([#5909](https://github.com/pocketbase/pocketbase/pull/5909); thanks @chnfyi).
-- WakaTime OAuth2 provider ([#5829](https://github.com/pocketbase/pocketbase/pull/5829); thanks @tigawanna).
-- Notion OAuth2 provider ([#4999](https://github.com/pocketbase/pocketbase/pull/4999); thanks @s-li1).
-- monday.com OAuth2 provider ([#5346](https://github.com/pocketbase/pocketbase/pull/5346); thanks @Jaytpa01).
-- New Instagram provider compatible with the new Instagram Login APIs ([#5588](https://github.com/pocketbase/pocketbase/pull/5588); thanks @pnmcosta).
+- Linear OAuth2 provider ([#5909](https://github.com/m2civ/pocketbase/pull/5909); thanks @chnfyi).
+- WakaTime OAuth2 provider ([#5829](https://github.com/m2civ/pocketbase/pull/5829); thanks @tigawanna).
+- Notion OAuth2 provider ([#4999](https://github.com/m2civ/pocketbase/pull/4999); thanks @s-li1).
+- monday.com OAuth2 provider ([#5346](https://github.com/m2civ/pocketbase/pull/5346); thanks @Jaytpa01).
+- New Instagram provider compatible with the new Instagram Login
+  APIs ([#5588](https://github.com/m2civ/pocketbase/pull/5588); thanks @pnmcosta).
     _The provider key is `instagram2` to prevent conflicts with existing linked users._
 - Option to retrieve the OIDC OAuth2 user info from the `id_token` payload for the cases when the provider doesn't have a dedicated user info endpoint.
 - Various minor UI improvements (_recursive `Presentable` view, slightly different collection options organization, zoom/pan for the logs chart, etc._)
@@ -220,8 +243,8 @@ There are a lot of changes but to highlight some of the most notable ones:
 
 #### SDKs changes
 
-- [JS SDK v0.22.0](https://github.com/pocketbase/js-sdk/blob/master/CHANGELOG.md)
-- [Dart SDK v0.19.0](https://github.com/pocketbase/dart-sdk/blob/master/CHANGELOG.md)
+- [JS SDK v0.22.0](https://github.com/m2civ/js-sdk/blob/master/CHANGELOG.md)
+- [Dart SDK v0.19.0](https://github.com/m2civ/dart-sdk/blob/master/CHANGELOG.md)
 
 #### Web APIs changes
 
@@ -251,9 +274,14 @@ There are a lot of changes but to highlight some of the most notable ones:
 
 - ⚠️ Removed `GET /records/{id}/external-auths` and `DELETE /records/{id}/external-auths/{provider}` endpoints because this is now handled by sending list and delete requests to the `_externalAuths` collection.
 
-- ⚠️ Changes to the app settings model fields and response (+new options such as `trustedProxy`, `rateLimits`, `batch`, etc.). The app settings Web APIs are mostly used by the Dashboard UI and rarely by the end users, but if you want to check all settings changes please refer to the [Settings Go struct](https://github.com/pocketbase/pocketbase/blob/develop/core/settings_model.go#L121).
+- ⚠️ Changes to the app settings model fields and response (+new options such as `trustedProxy`, `rateLimits`, `batch`,
+  etc.). The app settings Web APIs are mostly used by the Dashboard UI and rarely by the end users, but if you want to
+  check all settings changes please refer to
+  the [Settings Go struct](https://github.com/m2civ/pocketbase/blob/develop/core/settings_model.go#L121).
 
-- ⚠️ New flatten Collection model and fields structure. The Collection model Web APIs are mostly used by the Dashboard UI and rarely by the end users, but if you want to check all changes please refer to the [Collection Go struct](https://github.com/pocketbase/pocketbase/blob/develop/core/collection_model.go#L308).
+- ⚠️ New flatten Collection model and fields structure. The Collection model Web APIs are mostly used by the Dashboard
+  UI and rarely by the end users, but if you want to check all changes please refer to
+  the [Collection Go struct](https://github.com/m2civ/pocketbase/blob/develop/core/collection_model.go#L308).
 
 - ⚠️ The top level error response `code` key was renamed to `status` for consistency with the Go APIs.
     The error field key remains `code`:
