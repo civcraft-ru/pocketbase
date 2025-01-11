@@ -199,18 +199,14 @@
         // move outside of its current parent
         getHolder().appendChild(wrapper);
 
+        let wrapperCopy = wrapper;
+
         return () => {
             clearTimeout(contentScrollThrottle);
 
             unregisterActivePanel();
 
-            // ensures that no artifacts remains
-            // (currently there is a bug with svelte transition)
-            wrapper?.classList?.add("hidden");
-
-            setTimeout(() => {
-                wrapper?.remove();
-            }, 0);
+            wrapperCopy?.remove();
         };
     });
 </script>
@@ -238,11 +234,12 @@
                     {#if btnClose && !popup}
                         <button
                             type="button"
+                            aria-label="Close"
                             class="overlay-close"
                             transition:fade={{ duration: transitionSpeed }}
                             on:click|preventDefault={hide}
                         >
-                            <i class="ri-close-line" />
+                            <i class="ri-close-line" aria-hidden="true" />
                         </button>
                     {/if}
 
@@ -251,10 +248,11 @@
                     {#if btnClose && popup}
                         <button
                             type="button"
+                            aria-label="Close"
                             class="btn btn-sm btn-circle btn-transparent btn-close m-l-auto"
                             on:click|preventDefault={hide}
                         >
-                            <i class="ri-close-line txt-lg" />
+                            <i class="ri-close-line txt-lg" aria-hidden="true" />
                         </button>
                     {/if}
                 </div>

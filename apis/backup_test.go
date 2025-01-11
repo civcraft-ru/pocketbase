@@ -10,61 +10,64 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo/v5"
+	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
 	"gocloud.dev/blob"
 )
 
 func TestBackupsList(t *testing.T) {
+	t.Parallel()
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:   "unauthorized",
 			Method: http.MethodGet,
-			Url:    "/api/backups",
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			URL:    "/api/backups",
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
 			ExpectedStatus:  401,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as auth record",
+			Name:   "authorized as regular user",
 			Method: http.MethodGet,
-			Url:    "/api/backups",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyMjA4OTg1MjYxfQ.UwD8JvkbQtXpymT09d7J6fdA0aP9g4FJ1GPh_ggEkzc",
+			URL:    "/api/backups",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
 			},
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
-			ExpectedStatus:  401,
+			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as admin (empty list)",
+			Name:   "authorized as superuser (empty list)",
 			Method: http.MethodGet,
-			Url:    "/api/backups",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+			URL:    "/api/backups",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			ExpectedStatus: 200,
-			ExpectedContent: []string{
-				`[]`,
-			},
+			ExpectedStatus:  200,
+			ExpectedContent: []string{`[]`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as admin",
+			Name:   "authorized as superuser",
 			Method: http.MethodGet,
-			Url:    "/api/backups",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+			URL:    "/api/backups",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
@@ -75,6 +78,7 @@ func TestBackupsList(t *testing.T) {
 				`"test2.zip"`,
 				`"test3.zip"`,
 			},
+			ExpectedEvents: map[string]int{"*": 0},
 		},
 	}
 
@@ -84,54 +88,59 @@ func TestBackupsList(t *testing.T) {
 }
 
 func TestBackupsCreate(t *testing.T) {
+	t.Parallel()
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:   "unauthorized",
 			Method: http.MethodPost,
-			Url:    "/api/backups",
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			URL:    "/api/backups",
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				ensureNoBackups(t, app)
 			},
 			ExpectedStatus:  401,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as auth record",
+			Name:   "authorized as regular user",
 			Method: http.MethodPost,
-			Url:    "/api/backups",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyMjA4OTg1MjYxfQ.UwD8JvkbQtXpymT09d7J6fdA0aP9g4FJ1GPh_ggEkzc",
+			URL:    "/api/backups",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				ensureNoBackups(t, app)
 			},
-			ExpectedStatus:  401,
+			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as admin (pending backup)",
+			Name:   "authorized as superuser (pending backup)",
 			Method: http.MethodPost,
-			Url:    "/api/backups",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+			URL:    "/api/backups",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
-				app.Cache().Set(core.CacheKeyActiveBackup, "")
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+				app.Store().Set(core.StoreKeyActiveBackup, "")
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				ensureNoBackups(t, app)
 			},
 			ExpectedStatus:  400,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as admin (autogenerated name)",
+			Name:   "authorized as superuser (autogenerated name)",
 			Method: http.MethodPost,
-			Url:    "/api/backups",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+			URL:    "/api/backups",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				files, err := getBackupFiles(app)
 				if err != nil {
 					t.Fatal(err)
@@ -147,16 +156,20 @@ func TestBackupsCreate(t *testing.T) {
 				}
 			},
 			ExpectedStatus: 204,
+			ExpectedEvents: map[string]int{
+				"*":              0,
+				"OnBackupCreate": 1,
+			},
 		},
 		{
-			Name:   "authorized as admin (invalid name)",
+			Name:   "authorized as superuser (invalid name)",
 			Method: http.MethodPost,
-			Url:    "/api/backups",
+			URL:    "/api/backups",
 			Body:   strings.NewReader(`{"name":"!test.zip"}`),
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				ensureNoBackups(t, app)
 			},
 			ExpectedStatus: 400,
@@ -164,16 +177,17 @@ func TestBackupsCreate(t *testing.T) {
 				`"data":{`,
 				`"name":{"code":"validation_match_invalid"`,
 			},
+			ExpectedEvents: map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as admin (valid name)",
+			Name:   "authorized as superuser (valid name)",
 			Method: http.MethodPost,
-			Url:    "/api/backups",
+			URL:    "/api/backups",
 			Body:   strings.NewReader(`{"name":"test.zip"}`),
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				files, err := getBackupFiles(app)
 				if err != nil {
 					t.Fatal(err)
@@ -189,6 +203,10 @@ func TestBackupsCreate(t *testing.T) {
 				}
 			},
 			ExpectedStatus: 204,
+			ExpectedEvents: map[string]int{
+				"*":              0,
+				"OnBackupCreate": 1,
+			},
 		},
 	}
 
@@ -197,7 +215,9 @@ func TestBackupsCreate(t *testing.T) {
 	}
 }
 
-func TestBackupsUpload(t *testing.T) {
+func TestBackupUpload(t *testing.T) {
+	t.Parallel()
+
 	// create dummy form data bodies
 	type body struct {
 		buffer      io.Reader
@@ -237,55 +257,58 @@ func TestBackupsUpload(t *testing.T) {
 		{
 			Name:   "unauthorized",
 			Method: http.MethodPost,
-			Url:    "/api/backups/upload",
+			URL:    "/api/backups/upload",
 			Body:   bodies[0].buffer,
-			RequestHeaders: map[string]string{
+			Headers: map[string]string{
 				"Content-Type": bodies[0].contentType,
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				ensureNoBackups(t, app)
 			},
 			ExpectedStatus:  401,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as auth record",
+			Name:   "authorized as regular user",
 			Method: http.MethodPost,
-			Url:    "/api/backups/upload",
+			URL:    "/api/backups/upload",
 			Body:   bodies[1].buffer,
-			RequestHeaders: map[string]string{
+			Headers: map[string]string{
 				"Content-Type":  bodies[1].contentType,
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyMjA4OTg1MjYxfQ.UwD8JvkbQtXpymT09d7J6fdA0aP9g4FJ1GPh_ggEkzc",
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				ensureNoBackups(t, app)
 			},
-			ExpectedStatus:  401,
+			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as admin (missing file)",
+			Name:   "authorized as superuser (missing file)",
 			Method: http.MethodPost,
-			Url:    "/api/backups/upload",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+			URL:    "/api/backups/upload",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				ensureNoBackups(t, app)
 			},
 			ExpectedStatus:  400,
 			ExpectedContent: []string{`"data":{`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as admin (existing backup name)",
+			Name:   "authorized as superuser (existing backup name)",
 			Method: http.MethodPost,
-			Url:    "/api/backups/upload",
+			URL:    "/api/backups/upload",
 			Body:   bodies[3].buffer,
-			RequestHeaders: map[string]string{
+			Headers: map[string]string{
 				"Content-Type":  bodies[3].contentType,
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				fsys, err := app.NewBackupsFilesystem()
 				if err != nil {
 					t.Fatal(err)
@@ -296,7 +319,7 @@ func TestBackupsUpload(t *testing.T) {
 					t.Fatal(err)
 				}
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				files, _ := getBackupFiles(app)
 				if total := len(files); total != 1 {
 					t.Fatalf("Expected %d backup file, got %d", 1, total)
@@ -304,23 +327,38 @@ func TestBackupsUpload(t *testing.T) {
 			},
 			ExpectedStatus:  400,
 			ExpectedContent: []string{`"data":{"file":{`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as admin (valid file)",
+			Name:   "authorized as superuser (valid file)",
 			Method: http.MethodPost,
-			Url:    "/api/backups/upload",
+			URL:    "/api/backups/upload",
 			Body:   bodies[4].buffer,
-			RequestHeaders: map[string]string{
+			Headers: map[string]string{
 				"Content-Type":  bodies[4].contentType,
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				files, _ := getBackupFiles(app)
 				if total := len(files); total != 1 {
 					t.Fatalf("Expected %d backup file, got %d", 1, total)
 				}
 			},
 			ExpectedStatus: 204,
+			ExpectedEvents: map[string]int{"*": 0},
+		},
+		{
+			Name:   "ensure that the default body limit is skipped",
+			Method: http.MethodPost,
+			URL:    "/api/backups/upload",
+			Body:   bytes.NewBuffer(make([]byte, apis.DefaultMaxBodySize+100)),
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+			},
+			ExpectedStatus:     400, // it doesn't matter as long as it is not 413
+			ExpectedContent:    []string{`"data":{`},
+			NotExpectedContent: []string{"entity too large"},
+			ExpectedEvents:     map[string]int{"*": 0},
 		},
 	}
 
@@ -330,152 +368,165 @@ func TestBackupsUpload(t *testing.T) {
 }
 
 func TestBackupsDownload(t *testing.T) {
+	t.Parallel()
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:   "unauthorized",
 			Method: http.MethodGet,
-			Url:    "/api/backups/test1.zip",
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			URL:    "/api/backups/test1.zip",
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
 			Name:   "with record auth header",
 			Method: http.MethodGet,
-			Url:    "/api/backups/test1.zip",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyMjA4OTg1MjYxfQ.UwD8JvkbQtXpymT09d7J6fdA0aP9g4FJ1GPh_ggEkzc",
+			URL:    "/api/backups/test1.zip",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
 			},
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "with admin auth header",
+			Name:   "with superuser auth header",
 			Method: http.MethodGet,
-			Url:    "/api/backups/test1.zip",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+			URL:    "/api/backups/test1.zip",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
 			Name:   "with empty or invalid token",
 			Method: http.MethodGet,
-			Url:    "/api/backups/test1.zip?token=",
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			URL:    "/api/backups/test1.zip?token=",
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
 			Name:   "with valid record auth token",
 			Method: http.MethodGet,
-			Url:    "/api/backups/test1.zip?token=eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyMjA4OTg1MjYxfQ.UwD8JvkbQtXpymT09d7J6fdA0aP9g4FJ1GPh_ggEkzc",
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			URL:    "/api/backups/test1.zip?token=eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
 			Name:   "with valid record file token",
 			Method: http.MethodGet,
-			Url:    "/api/backups/test1.zip?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MTg5MzQ1MjQ2MSwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwidHlwZSI6ImF1dGhSZWNvcmQifQ.0d_0EO6kfn9ijZIQWAqgRi8Bo1z7MKcg1LQpXhQsEPk",
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			URL:    "/api/backups/test1.zip?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6ImZpbGUiLCJjb2xsZWN0aW9uSWQiOiJfcGJfdXNlcnNfYXV0aF8ifQ.nSTLuCPcGpWn2K2l-BFkC3Vlzc-ZTDPByYq8dN1oPSo",
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "with valid admin auth token",
+			Name:   "with valid superuser auth token",
 			Method: http.MethodGet,
-			Url:    "/api/backups/test1.zip?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			URL:    "/api/backups/test1.zip?token=eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "with expired admin file token",
+			Name:   "with expired superuser file token",
 			Method: http.MethodGet,
-			Url:    "/api/backups/test1.zip?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsImV4cCI6MTY0MDk5MTY2MSwidHlwZSI6ImFkbWluIn0.g7Q_3UX6H--JWJ7yt1Hoe-1ugTX1KpbKzdt0zjGSe-E",
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			URL:    "/api/backups/test1.zip?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsImV4cCI6MTY0MDk5MTY2MSwidHlwZSI6ImZpbGUiLCJjb2xsZWN0aW9uSWQiOiJwYmNfMzE0MjYzNTgyMyJ9.nqqtqpPhxU0045F4XP_ruAkzAidYBc5oPy9ErN3XBq0",
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
 			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "with valid admin file token but missing backup name",
+			Name:   "with valid superuser file token but missing backup name",
 			Method: http.MethodGet,
-			Url:    "/api/backups/missing?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsImV4cCI6MTg5MzQ1MjQ2MSwidHlwZSI6ImFkbWluIn0.LyAMpSfaHVsuUqIlqqEbhDQSdFzoPz_EIDcb2VJMBsU",
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			URL:    "/api/backups/missing?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6ImZpbGUiLCJjb2xsZWN0aW9uSWQiOiJwYmNfMzE0MjYzNTgyMyJ9.Lupz541xRvrktwkrl55p5pPCF77T69ZRsohsIcb2dxc",
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
 			ExpectedStatus:  400,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "with valid admin file token",
+			Name:   "with valid superuser file token",
 			Method: http.MethodGet,
-			Url:    "/api/backups/test1.zip?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsImV4cCI6MTg5MzQ1MjQ2MSwidHlwZSI6ImFkbWluIn0.LyAMpSfaHVsuUqIlqqEbhDQSdFzoPz_EIDcb2VJMBsU",
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			URL:    "/api/backups/test1.zip?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6ImZpbGUiLCJjb2xsZWN0aW9uSWQiOiJwYmNfMzE0MjYzNTgyMyJ9.Lupz541xRvrktwkrl55p5pPCF77T69ZRsohsIcb2dxc",
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
-				`storage/`,
-				`data.db`,
-				`logs.db`,
+				"storage/",
+				"data.db",
+				"auxiliary.db",
 			},
+			ExpectedEvents: map[string]int{"*": 0},
 		},
 		{
-			Name:   "with valid admin file token and backup name with escaped char",
+			Name:   "with valid superuser file token and backup name with escaped char",
 			Method: http.MethodGet,
-			Url:    "/api/backups/%40test4.zip?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsImV4cCI6MTg5MzQ1MjQ2MSwidHlwZSI6ImFkbWluIn0.LyAMpSfaHVsuUqIlqqEbhDQSdFzoPz_EIDcb2VJMBsU",
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			URL:    "/api/backups/%40test4.zip?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsImV4cCI6MjUyNDYwNDQ2MSwidHlwZSI6ImZpbGUiLCJjb2xsZWN0aW9uSWQiOiJwYmNfMzE0MjYzNTgyMyJ9.Lupz541xRvrktwkrl55p5pPCF77T69ZRsohsIcb2dxc",
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
-				`storage/`,
-				`data.db`,
-				`logs.db`,
+				"storage/",
+				"data.db",
+				"auxiliary.db",
 			},
+			ExpectedEvents: map[string]int{"*": 0},
 		},
 	}
 
@@ -485,7 +536,9 @@ func TestBackupsDownload(t *testing.T) {
 }
 
 func TestBackupsDelete(t *testing.T) {
-	noTestBackupFilesChanges := func(t *testing.T, app *tests.TestApp) {
+	t.Parallel()
+
+	noTestBackupFilesChanges := func(t testing.TB, app *tests.TestApp) {
 		files, err := getBackupFiles(app)
 		if err != nil {
 			t.Fatal(err)
@@ -501,91 +554,95 @@ func TestBackupsDelete(t *testing.T) {
 		{
 			Name:   "unauthorized",
 			Method: http.MethodDelete,
-			Url:    "/api/backups/test1.zip",
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			URL:    "/api/backups/test1.zip",
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				noTestBackupFilesChanges(t, app)
 			},
 			ExpectedStatus:  401,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as auth record",
+			Name:   "authorized as regular user",
 			Method: http.MethodDelete,
-			Url:    "/api/backups/test1.zip",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyMjA4OTg1MjYxfQ.UwD8JvkbQtXpymT09d7J6fdA0aP9g4FJ1GPh_ggEkzc",
+			URL:    "/api/backups/test1.zip",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
 			},
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				noTestBackupFilesChanges(t, app)
 			},
-			ExpectedStatus:  401,
+			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as admin (missing file)",
+			Name:   "authorized as superuser (missing file)",
 			Method: http.MethodDelete,
-			Url:    "/api/backups/missing.zip",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+			URL:    "/api/backups/missing.zip",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				noTestBackupFilesChanges(t, app)
 			},
 			ExpectedStatus:  400,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as admin (existing file with matching active backup)",
+			Name:   "authorized as superuser (existing file with matching active backup)",
 			Method: http.MethodDelete,
-			Url:    "/api/backups/test1.zip",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+			URL:    "/api/backups/test1.zip",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 
 				// mock active backup with the same name to delete
-				app.Cache().Set(core.CacheKeyActiveBackup, "test1.zip")
+				app.Store().Set(core.StoreKeyActiveBackup, "test1.zip")
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				noTestBackupFilesChanges(t, app)
 			},
 			ExpectedStatus:  400,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as admin (existing file and no matching active backup)",
+			Name:   "authorized as superuser (existing file and no matching active backup)",
 			Method: http.MethodDelete,
-			Url:    "/api/backups/test1.zip",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+			URL:    "/api/backups/test1.zip",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 
 				// mock active backup with different name
-				app.Cache().Set(core.CacheKeyActiveBackup, "new.zip")
+				app.Store().Set(core.StoreKeyActiveBackup, "new.zip")
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				files, err := getBackupFiles(app)
 				if err != nil {
 					t.Fatal(err)
@@ -604,20 +661,21 @@ func TestBackupsDelete(t *testing.T) {
 				}
 			},
 			ExpectedStatus: 204,
+			ExpectedEvents: map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as admin (backup with escaped character)",
+			Name:   "authorized as superuser (backup with escaped character)",
 			Method: http.MethodDelete,
-			Url:    "/api/backups/%40test4.zip",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+			URL:    "/api/backups/%40test4.zip",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
-			AfterTestFunc: func(t *testing.T, app *tests.TestApp, res *http.Response) {
+			AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
 				files, err := getBackupFiles(app)
 				if err != nil {
 					t.Fatal(err)
@@ -636,6 +694,7 @@ func TestBackupsDelete(t *testing.T) {
 				}
 			},
 			ExpectedStatus: 204,
+			ExpectedEvents: map[string]int{"*": 0},
 		},
 	}
 
@@ -645,65 +704,71 @@ func TestBackupsDelete(t *testing.T) {
 }
 
 func TestBackupsRestore(t *testing.T) {
+	t.Parallel()
+
 	scenarios := []tests.ApiScenario{
 		{
 			Name:   "unauthorized",
 			Method: http.MethodPost,
-			Url:    "/api/backups/test1.zip/restore",
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			URL:    "/api/backups/test1.zip/restore",
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
 			ExpectedStatus:  401,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as auth record",
+			Name:   "authorized as regular user",
 			Method: http.MethodPost,
-			Url:    "/api/backups/test1.zip/restore",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoUmVjb3JkIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyMjA4OTg1MjYxfQ.UwD8JvkbQtXpymT09d7J6fdA0aP9g4FJ1GPh_ggEkzc",
+			URL:    "/api/backups/test1.zip/restore",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjRxMXhsY2xtZmxva3UzMyIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoiX3BiX3VzZXJzX2F1dGhfIiwiZXhwIjoyNTI0NjA0NDYxLCJyZWZyZXNoYWJsZSI6dHJ1ZX0.ZT3F0Z3iM-xbGgSG3LEKiEzHrPHr8t8IuHLZGGNuxLo",
 			},
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
-			ExpectedStatus:  401,
+			ExpectedStatus:  403,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as admin (missing file)",
+			Name:   "authorized as superuser (missing file)",
 			Method: http.MethodPost,
-			Url:    "/api/backups/missing.zip/restore",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+			URL:    "/api/backups/missing.zip/restore",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 			},
 			ExpectedStatus:  400,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 		{
-			Name:   "authorized as admin (active backup process)",
+			Name:   "authorized as superuser (active backup process)",
 			Method: http.MethodPost,
-			Url:    "/api/backups/test1.zip/restore",
-			RequestHeaders: map[string]string{
-				"Authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhZG1pbiIsImV4cCI6MjIwODk4NTI2MX0.M1m--VOqGyv0d23eeUc0r9xE8ZzHaYVmVFw1VZW6gT8",
+			URL:    "/api/backups/test1.zip/restore",
+			Headers: map[string]string{
+				"Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6InN5d2JoZWNuaDQ2cmhtMCIsInR5cGUiOiJhdXRoIiwiY29sbGVjdGlvbklkIjoicGJjXzMxNDI2MzU4MjMiLCJleHAiOjI1MjQ2MDQ0NjEsInJlZnJlc2hhYmxlIjp0cnVlfQ.UXgO3j-0BumcugrFjbd7j0M4MQvbrLggLlcu_YNGjoY",
 			},
-			BeforeTestFunc: func(t *testing.T, app *tests.TestApp, e *echo.Echo) {
+			BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 				if err := createTestBackups(app); err != nil {
 					t.Fatal(err)
 				}
 
-				app.Cache().Set(core.CacheKeyActiveBackup, "")
+				app.Store().Set(core.StoreKeyActiveBackup, "")
 			},
 			ExpectedStatus:  400,
 			ExpectedContent: []string{`"data":{}`},
+			ExpectedEvents:  map[string]int{"*": 0},
 		},
 	}
 
@@ -746,7 +811,7 @@ func getBackupFiles(app core.App) ([]*blob.ListObject, error) {
 	return fsys.List("")
 }
 
-func ensureNoBackups(t *testing.T, app *tests.TestApp) {
+func ensureNoBackups(t testing.TB, app *tests.TestApp) {
 	files, err := getBackupFiles(app)
 	if err != nil {
 		t.Fatal(err)

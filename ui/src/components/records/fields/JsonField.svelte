@@ -1,8 +1,8 @@
 <script>
     import { onMount } from "svelte";
     import tooltip from "@/actions/tooltip";
-    import CommonHelper from "@/utils/CommonHelper";
     import Field from "@/components/base/Field.svelte";
+    import FieldLabel from "@/components/records/fields/FieldLabel.svelte";
 
     export let field;
     export let value = undefined;
@@ -19,6 +19,10 @@
     $: isValid = isValidJson(serialized);
 
     function serialize(val) {
+        if (typeof val == "string" && isValidJson(val)) {
+            return val; // already serlialized
+        }
+
         return JSON.stringify(typeof val === "undefined" ? null : val, null, 2);
     }
 
@@ -41,9 +45,7 @@
 </script>
 
 <Field class="form-field {field.required ? 'required' : ''}" name={field.name} let:uniqueId>
-    <label for={uniqueId}>
-        <i class={CommonHelper.getFieldTypeIcon(field.type)} />
-        <span class="txt">{field.name}</span>
+    <FieldLabel {uniqueId} {field}>
         <span
             class="json-state"
             use:tooltip={{ position: "left", text: isValid ? "Valid JSON" : "Invalid JSON" }}
@@ -54,7 +56,8 @@
                 <i class="ri-error-warning-fill txt-danger" />
             {/if}
         </span>
-    </label>
+    </FieldLabel>
+
     {#if editorComponent}
         <svelte:component
             this={editorComponent}

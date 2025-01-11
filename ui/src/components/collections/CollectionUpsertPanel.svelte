@@ -1,21 +1,21 @@
 <script>
-    import { createEventDispatcher, tick } from "svelte";
-    import { scale } from "svelte/transition";
-    import CommonHelper from "@/utils/CommonHelper";
-    import ApiClient from "@/utils/ApiClient";
-    import { errors, setErrors, removeError } from "@/stores/errors";
-    import { confirm } from "@/stores/confirmation";
-    import { removeAllToasts, addSuccessToast } from "@/stores/toasts";
-    import { addCollection, removeCollection } from "@/stores/collections";
     import tooltip from "@/actions/tooltip";
     import Field from "@/components/base/Field.svelte";
-    import Toggler from "@/components/base/Toggler.svelte";
     import OverlayPanel from "@/components/base/OverlayPanel.svelte";
-    import CollectionFieldsTab from "@/components/collections/CollectionFieldsTab.svelte";
-    import CollectionRulesTab from "@/components/collections/CollectionRulesTab.svelte";
-    import CollectionQueryTab from "@/components/collections/CollectionQueryTab.svelte";
+    import Toggler from "@/components/base/Toggler.svelte";
     import CollectionAuthOptionsTab from "@/components/collections/CollectionAuthOptionsTab.svelte";
+    import CollectionFieldsTab from "@/components/collections/CollectionFieldsTab.svelte";
+    import CollectionQueryTab from "@/components/collections/CollectionQueryTab.svelte";
+    import CollectionRulesTab from "@/components/collections/CollectionRulesTab.svelte";
     import CollectionUpdateConfirm from "@/components/collections/CollectionUpdateConfirm.svelte";
+    import { addCollection, removeCollection, scaffolds, activeCollection } from "@/stores/collections";
+    import { confirm } from "@/stores/confirmation";
+    import { errors, removeError, setErrors } from "@/stores/errors";
+    import { addSuccessToast, removeAllToasts } from "@/stores/toasts";
+    import ApiClient from "@/utils/ApiClient";
+    import CommonHelper from "@/utils/CommonHelper";
+    import { createEventDispatcher, tick } from "svelte";
+    import { scale } from "svelte/transition";
 
     const TAB_SCHEMA = "schema";
     const TAB_RULES = "api_rules";
@@ -35,25 +35,31 @@
     let collectionPanel;
     let confirmChangesPanel;
     let original = null;
-    let collection = CommonHelper.initCollection();
+    let collection = {};
     let isSaving = false;
+    let isLoadingConfirmation = false;
     let confirmClose = false; // prevent close recursion
     let activeTab = TAB_SCHEMA;
     let initialFormHash = calculateFormHash(collection);
-    let schemaTabError = "";
+    let fieldsTabError = "";
+    let baseCollectionKeys = [];
+
+    $: baseCollectionKeys = Object.keys($scaffolds["base"] || {});
 
     $: isAuth = collection.type === TYPE_AUTH;
 
     $: isView = collection.type === TYPE_VIEW;
 
-    $: if ($errors.schema || $errors.options?.query) {
-        // extract the direct schema field error, otherwise - return a generic message
-        schemaTabError = CommonHelper.getNestedVal($errors, "schema.message") || "Has errors";
+    $: if ($errors.fields || $errors.viewQuery || $errors.indexes) {
+        // extract the direct fields list error, otherwise - return a generic message
+        fieldsTabError = CommonHelper.getNestedVal($errors, "fields.message") || "Has errors";
     } else {
-        schemaTabError = "";
+        fieldsTabError = "";
     }
 
     $: isSystemUpdate = !!collection.id && collection.system;
+
+    $: isSuperusers = !!collection.id && collection.system && collection.name == "_superusers";
 
     $: hasChanges = initialFormHash != calculateFormHash(collection);
 
@@ -75,7 +81,7 @@
     // update indexes on collection rename
     $: if (collection.name && original?.name != collection.name && collection.indexes.length > 0) {
         collection.indexes = collection.indexes?.map((idx) =>
-            CommonHelper.replaceIndexTableName(idx, collection.name)
+            CommonHelper.replaceIndexTableName(idx, collection.name),
         );
     }
 
@@ -87,6 +93,8 @@
         load(model);
 
         confirmClose = true;
+        isLoadingConfirmation = false;
+        isSaving = false;
 
         changeTab(TAB_SCHEMA);
 
@@ -97,6 +105,11 @@
         return collectionPanel?.hide();
     }
 
+    export function forceHide() {
+        confirmClose = false;
+        hide();
+    }
+
     async function load(model) {
         setErrors({}); // reset errors
 
@@ -105,27 +118,50 @@
             collection = structuredClone(model);
         } else {
             original = null;
-            collection = CommonHelper.initCollection();
+            collection = structuredClone($scaffolds["base"]);
+
+            // add default timestamp fields
+            collection.fields.push({
+                type: "autodate",
+                name: "created",
+                onCreate: true,
+            });
+            collection.fields.push({
+                type: "autodate",
+                name: "updated",
+                onCreate: true,
+                onUpdate: true,
+            });
         }
 
         // normalize
-        collection.schema = collection.schema || [];
-        collection.originalName = collection.name || "";
+        collection.fields = collection.fields || [];
+        collection._originalName = collection.name || "";
 
         await tick();
 
         initialFormHash = calculateFormHash(collection);
     }
 
-    function saveConfirm() {
-        if (!collection.id) {
-            save();
-        } else {
-            confirmChangesPanel?.show(original, collection);
+    async function saveConfirm(hideAfterSave = true) {
+        if (isLoadingConfirmation) {
+            return;
         }
+
+        isLoadingConfirmation = true;
+
+        try {
+            if (!collection.id) {
+                await save(hideAfterSave);
+            } else {
+                await confirmChangesPanel?.show(original, collection, hideAfterSave);
+            }
+        } catch {}
+
+        isLoadingConfirmation = false;
     }
 
-    function save() {
+    function save(hideAfterSave = true) {
         if (isSaving) {
             return;
         }
@@ -133,31 +169,40 @@
         isSaving = true;
 
         const data = exportFormData();
+        const isNew = !collection.id;
 
         let request;
-        if (!collection.id) {
+        if (isNew) {
             request = ApiClient.collections.create(data);
         } else {
             request = ApiClient.collections.update(collection.id, data);
         }
 
-        request
+        return request
             .then((result) => {
                 removeAllToasts();
 
                 addCollection(result);
 
-                confirmClose = false;
-                hide();
+                if (hideAfterSave) {
+                    confirmClose = false;
+                    hide();
+                } else {
+                    load(result);
+                }
 
                 addSuccessToast(
-                    !collection.id ? "Successfully created collection." : "Successfully updated collection."
+                    !collection.id ? "Successfully created collection." : "Successfully updated collection.",
                 );
 
                 dispatch("save", {
-                    isNew: !collection.id,
+                    isNew: isNew,
                     collection: result,
                 });
+
+                if (isNew) {
+                    $activeCollection = result;
+                }
             })
             .catch((err) => {
                 ApiClient.error(err);
@@ -169,17 +214,39 @@
 
     function exportFormData() {
         const data = Object.assign({}, collection);
-        data.schema = data.schema.slice(0);
+        data.fields = data.fields.slice(0);
 
         // remove deleted fields
-        for (let i = data.schema.length - 1; i >= 0; i--) {
-            const field = data.schema[i];
-            if (field.toDelete) {
-                data.schema.splice(i, 1);
+        for (let i = data.fields.length - 1; i >= 0; i--) {
+            const field = data.fields[i];
+            if (field._toDelete) {
+                data.fields.splice(i, 1);
             }
         }
 
         return data;
+    }
+
+    function truncateConfirm() {
+        if (!original?.id) {
+            return; // nothing to truncate
+        }
+
+        confirm(
+            `Do you really want to delete all "${original.name}" records, including their cascade delete references and files?`,
+            () => {
+                return ApiClient.collections
+                    .truncate(original.id)
+                    .then(() => {
+                        forceHide();
+                        addSuccessToast(`Successfully truncated collection "${original.name}".`);
+                        dispatch("truncate");
+                    })
+                    .catch((err) => {
+                        ApiClient.error(err);
+                    });
+            },
+        );
     }
 
     function deleteConfirm() {
@@ -191,7 +258,7 @@
             return ApiClient.collections
                 .delete(original.id)
                 .then(() => {
-                    hide();
+                    forceHide();
                     addSuccessToast(`Successfully deleted collection "${original.name}".`);
                     dispatch("delete", original);
                     removeCollection(original);
@@ -209,8 +276,11 @@
     function setCollectionType(t) {
         collection.type = t;
 
-        // reset schema errors on type change
-        removeError("schema");
+        // merge with the scaffold to ensure that the minimal props are set
+        collection = Object.assign(structuredClone($scaffolds[t]), collection);
+
+        // reset fields list errors on type change
+        removeError("fields");
     }
 
     function duplicateConfirm() {
@@ -232,9 +302,9 @@
             clone.updated = "";
             clone.name += "_duplicate";
 
-            // reset the schema
-            if (!CommonHelper.isEmpty(clone.schema)) {
-                for (const field of clone.schema) {
+            // reset the fields list
+            if (!CommonHelper.isEmpty(clone.fields)) {
+                for (const field of clone.fields) {
                     field.id = "";
                 }
             }
@@ -243,7 +313,7 @@
             if (!CommonHelper.isEmpty(clone.indexes)) {
                 for (let i = 0; i < clone.indexes.length; i++) {
                     const parsed = CommonHelper.parseIndex(clone.indexes[i]);
-                    parsed.indexName = "idx_" + CommonHelper.randomString(7);
+                    parsed.indexName = "idx_" + CommonHelper.randomString(10);
                     parsed.tableName = clone.name;
                     clone.indexes[i] = CommonHelper.buildIndex(parsed);
                 }
@@ -256,8 +326,25 @@
 
         initialFormHash = "";
     }
+
+    function hasOtherKeys(obj, excludes = []) {
+        if (CommonHelper.isEmpty(obj)) {
+            return false;
+        }
+
+        const errorKeys = Object.keys(obj);
+        for (let key of errorKeys) {
+            if (!excludes.includes(key)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 </script>
 
+<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
+<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 <OverlayPanel
     bind:this={collectionPanel}
     class="overlay-panel-lg colored-header collection-panel"
@@ -281,25 +368,52 @@
             {!collection.id ? "New collection" : "Edit collection"}
         </h4>
 
-        {#if !!collection.id && !collection.system}
+        {#if !!collection.id && (!collection.system || !isView)}
             <div class="flex-fill" />
-            <button type="button" aria-label="More" class="btn btn-sm btn-circle btn-transparent flex-gap-0">
-                <i class="ri-more-line" />
+            <div
+                tabindex="0"
+                role="button"
+                aria-label="More collection options"
+                class="btn btn-sm btn-circle btn-transparent flex-gap-0"
+            >
+                <i class="ri-more-line" aria-hidden="true" />
                 <Toggler class="dropdown dropdown-right m-t-5">
-                    <button type="button" class="dropdown-item closable" on:click={() => duplicateConfirm()}>
-                        <i class="ri-file-copy-line" />
-                        <span class="txt">Duplicate</span>
-                    </button>
-                    <button
-                        type="button"
-                        class="dropdown-item txt-danger closable"
-                        on:click|preventDefault|stopPropagation={() => deleteConfirm()}
-                    >
-                        <i class="ri-delete-bin-7-line" />
-                        <span class="txt">Delete</span>
-                    </button>
+                    {#if !collection.system}
+                        <button
+                            type="button"
+                            class="dropdown-item"
+                            role="menuitem"
+                            on:click={() => duplicateConfirm()}
+                        >
+                            <i class="ri-file-copy-line" aria-hidden="true" />
+                            <span class="txt">Duplicate</span>
+                        </button>
+                        <hr />
+                    {/if}
+                    {#if !isView}
+                        <button
+                            type="button"
+                            class="dropdown-item txt-danger"
+                            role="menuitem"
+                            on:click={() => truncateConfirm()}
+                        >
+                            <i class="ri-eraser-line" aria-hidden="true"></i>
+                            <span class="txt">Truncate</span>
+                        </button>
+                    {/if}
+                    {#if !collection.system}
+                        <button
+                            type="button"
+                            class="dropdown-item txt-danger"
+                            role="menuitem"
+                            on:click|preventDefault|stopPropagation={() => deleteConfirm()}
+                        >
+                            <i class="ri-delete-bin-7-line" aria-hidden="true" />
+                            <span class="txt">Delete</span>
+                        </button>
+                    {/if}
                 </Toggler>
-            </button>
+            </div>
         {/if}
 
         <form
@@ -308,11 +422,7 @@
                 canSave && saveConfirm();
             }}
         >
-            <Field
-                class="form-field collection-field-name required m-b-0 {isSystemUpdate ? 'disabled' : ''}"
-                name="name"
-                let:uniqueId
-            >
+            <Field class="form-field collection-field-name required m-b-0" name="name" let:uniqueId>
                 <label for={uniqueId}>Name</label>
 
                 <!-- svelte-ignore a11y-autofocus -->
@@ -322,6 +432,7 @@
                     required
                     disabled={isSystemUpdate}
                     spellcheck="false"
+                    class:txt-bold={collection.system}
                     autofocus={!collection.id}
                     placeholder={isAuth ? `eg. "users"` : `eg. "posts"`}
                     value={collection.name}
@@ -332,31 +443,37 @@
                 />
 
                 <div class="form-field-addon">
-                    <button
-                        type="button"
+                    <div
+                        tabindex={!collection.id ? 0 : -1}
+                        role={!collection.id ? "button" : ""}
+                        aria-label="View types"
                         class="btn btn-sm p-r-10 p-l-10 {!collection.id ? 'btn-outline' : 'btn-transparent'}"
-                        disabled={!!collection.id}
+                        class:btn-disabled={!!collection.id}
                     >
                         <!-- empty span for alignment -->
-                        <span />
+                        <span aria-hidden="true" />
                         <span class="txt">Type: {collectionTypes[collection.type] || "N/A"}</span>
                         {#if !collection.id}
-                            <i class="ri-arrow-down-s-fill" />
+                            <i class="ri-arrow-down-s-fill" aria-hidden="true" />
                             <Toggler class="dropdown dropdown-right dropdown-nowrap m-t-5">
                                 {#each Object.entries(collectionTypes) as [type, label]}
                                     <button
                                         type="button"
+                                        role="menuitem"
                                         class="dropdown-item closable"
                                         class:selected={type == collection.type}
                                         on:click={() => setCollectionType(type)}
                                     >
-                                        <i class={CommonHelper.getCollectionTypeIcon(type)} />
+                                        <i
+                                            class={CommonHelper.getCollectionTypeIcon(type)}
+                                            aria-hidden="true"
+                                        />
                                         <span class="txt">{label} collection</span>
                                     </button>
                                 {/each}
                             </Toggler>
                         {/if}
-                    </button>
+                    </div>
                 </div>
 
                 {#if collection.system}
@@ -375,30 +492,32 @@
                 on:click={() => changeTab(TAB_SCHEMA)}
             >
                 <span class="txt">{isView ? "Query" : "Fields"}</span>
-                {#if !CommonHelper.isEmpty(schemaTabError)}
+                {#if !CommonHelper.isEmpty(fieldsTabError)}
                     <i
                         class="ri-error-warning-fill txt-danger"
                         transition:scale={{ duration: 150, start: 0.7 }}
-                        use:tooltip={schemaTabError}
+                        use:tooltip={fieldsTabError}
                     />
                 {/if}
             </button>
 
-            <button
-                type="button"
-                class="tab-item"
-                class:active={activeTab === TAB_RULES}
-                on:click={() => changeTab(TAB_RULES)}
-            >
-                <span class="txt">API Rules</span>
-                {#if !CommonHelper.isEmpty($errors?.listRule) || !CommonHelper.isEmpty($errors?.viewRule) || !CommonHelper.isEmpty($errors?.createRule) || !CommonHelper.isEmpty($errors?.updateRule) || !CommonHelper.isEmpty($errors?.deleteRule) || !CommonHelper.isEmpty($errors?.options?.manageRule)}
-                    <i
-                        class="ri-error-warning-fill txt-danger"
-                        transition:scale={{ duration: 150, start: 0.7 }}
-                        use:tooltip={"Has errors"}
-                    />
-                {/if}
-            </button>
+            {#if !isSuperusers}
+                <button
+                    type="button"
+                    class="tab-item"
+                    class:active={activeTab === TAB_RULES}
+                    on:click={() => changeTab(TAB_RULES)}
+                >
+                    <span class="txt">API Rules</span>
+                    {#if !CommonHelper.isEmpty($errors?.listRule) || !CommonHelper.isEmpty($errors?.viewRule) || !CommonHelper.isEmpty($errors?.createRule) || !CommonHelper.isEmpty($errors?.updateRule) || !CommonHelper.isEmpty($errors?.deleteRule) || !CommonHelper.isEmpty($errors?.authRule) || !CommonHelper.isEmpty($errors?.manageRule)}
+                        <i
+                            class="ri-error-warning-fill txt-danger"
+                            transition:scale={{ duration: 150, start: 0.7 }}
+                            use:tooltip={"Has errors"}
+                        />
+                    {/if}
+                </button>
+            {/if}
 
             {#if isAuth}
                 <button
@@ -408,7 +527,7 @@
                     on:click={() => changeTab(TAB_OPTIONS)}
                 >
                     <span class="txt">Options</span>
-                    {#if !CommonHelper.isEmpty($errors?.options) && !$errors?.options?.manageRule}
+                    {#if $errors && hasOtherKeys($errors, baseCollectionKeys.concat( ["manageRule", "authRule"], ))}
                         <i
                             class="ri-error-warning-fill txt-danger"
                             transition:scale={{ duration: 150, start: 0.7 }}
@@ -430,7 +549,7 @@
             {/if}
         </div>
 
-        {#if activeTab === TAB_RULES}
+        {#if !isSuperusers && activeTab === TAB_RULES}
             <div class="tab-item active">
                 <CollectionRulesTab bind:collection />
             </div>
@@ -447,19 +566,46 @@
         <button type="button" class="btn btn-transparent" disabled={isSaving} on:click={() => hide()}>
             <span class="txt">Cancel</span>
         </button>
-        <button
-            type="button"
-            class="btn btn-expanded"
-            class:btn-loading={isSaving}
-            disabled={!canSave || isSaving}
-            on:click={() => saveConfirm()}
-        >
-            <span class="txt">{!collection.id ? "Create" : "Save changes"}</span>
-        </button>
+
+        <div class="btns-group no-gap">
+            <button
+                type="button"
+                title="Save and close"
+                class="btn"
+                class:btn-expanded={!collection.id}
+                class:btn-expanded-sm={!!collection.id}
+                class:btn-loading={isSaving || isLoadingConfirmation}
+                disabled={!canSave || isSaving || isLoadingConfirmation}
+                on:click={() => saveConfirm()}
+            >
+                <span class="txt">{!collection.id ? "Create" : "Save changes"}</span>
+            </button>
+
+            {#if collection.id}
+                <button
+                    type="button"
+                    class="btn p-l-5 p-r-5 flex-gap-0"
+                    disabled={!canSave || isSaving || isLoadingConfirmation}
+                >
+                    <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+
+                    <Toggler class="dropdown dropdown-upside dropdown-right dropdown-nowrap m-b-5">
+                        <button
+                            type="button"
+                            class="dropdown-item closable"
+                            role="menuitem"
+                            on:click={() => saveConfirm(false)}
+                        >
+                            <span class="txt">Save and continue</span>
+                        </button>
+                    </Toggler>
+                </button>
+            {/if}
+        </div>
     </svelte:fragment>
 </OverlayPanel>
 
-<CollectionUpdateConfirm bind:this={confirmChangesPanel} on:confirm={() => save()} />
+<CollectionUpdateConfirm bind:this={confirmChangesPanel} on:confirm={(e) => save(e.detail)} />
 
 <style>
     .upsert-panel-title {
@@ -469,5 +615,9 @@
     }
     .tabs-content:focus-within {
         z-index: 9; /* autocomplete dropdown overlay fix */
+    }
+    :global(.collection-panel .panel-content) {
+        scrollbar-gutter: stable;
+        padding-right: calc(var(--baseSpacing) - 5px);
     }
 </style>

@@ -56,9 +56,8 @@
         isDownloading[name] = true;
 
         try {
-            const token = await ApiClient.getAdminFileToken();
-            const url = ApiClient.backups.getDownloadUrl(token, name);
-            CommonHelper.download(url);
+            const token = await ApiClient.getSuperuserFileToken();
+            CommonHelper.download(ApiClient.backups.getDownloadURL(token, name));
         } catch (err) {
             if (!err.isAbort) {
                 ApiClient.error(err);

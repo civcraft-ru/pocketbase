@@ -4,10 +4,11 @@ import (
 	"errors"
 	"time"
 
+	// @todo update to v5
 	"github.com/golang-jwt/jwt/v4"
 )
 
-// ParseUnverifiedJWT parses JWT token and returns its claims
+// ParseUnverifiedJWT parses JWT and returns its claims
 // but DOES NOT verify the signature.
 //
 // It verifies only the exp, iat and nbf claims.
@@ -24,7 +25,7 @@ func ParseUnverifiedJWT(token string) (jwt.MapClaims, error) {
 	return claims, err
 }
 
-// ParseJWT verifies and parses JWT token and returns its claims.
+// ParseJWT verifies and parses JWT and returns its claims.
 func ParseJWT(token string, verificationKey string) (jwt.MapClaims, error) {
 	parser := jwt.NewParser(jwt.WithValidMethods([]string{"HS256"}))
 
@@ -39,15 +40,13 @@ func ParseJWT(token string, verificationKey string) (jwt.MapClaims, error) {
 		return claims, nil
 	}
 
-	return nil, errors.New("Unable to parse token.")
+	return nil, errors.New("unable to parse token")
 }
 
-// NewJWT generates and returns new HS256 signed JWT token.
-func NewJWT(payload jwt.MapClaims, signingKey string, secondsDuration int64) (string, error) {
-	seconds := time.Duration(secondsDuration) * time.Second
-
+// NewJWT generates and returns new HS256 signed JWT.
+func NewJWT(payload jwt.MapClaims, signingKey string, duration time.Duration) (string, error) {
 	claims := jwt.MapClaims{
-		"exp": time.Now().Add(seconds).Unix(),
+		"exp": time.Now().Add(duration).Unix(),
 	}
 
 	for k, v := range payload {
@@ -55,12 +54,4 @@ func NewJWT(payload jwt.MapClaims, signingKey string, secondsDuration int64) (st
 	}
 
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(signingKey))
-}
-
-// Deprecated:
-// Consider replacing with NewJWT().
-//
-// NewToken is a legacy alias for NewJWT that generates a HS256 signed JWT token.
-func NewToken(payload jwt.MapClaims, signingKey string, secondsDuration int64) (string, error) {
-	return NewJWT(payload, signingKey, secondsDuration)
 }

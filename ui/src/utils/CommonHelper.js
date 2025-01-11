@@ -1,8 +1,8 @@
 import { DateTime } from "luxon";
 
 const imageExtensions = [
-   ".jpg", ".jpeg", ".png", ".svg",
-   ".gif", ".jfif", ".webp", ".avif",
+    ".jpg", ".jpeg", ".png", ".svg",
+    ".gif", ".jfif", ".webp", ".avif",
 ];
 
 const videoExtensions = [
@@ -18,6 +18,38 @@ const documentExtensions = [
     ".pdf", ".doc", ".docx", ".xls",
     ".xlsx", ".ppt", ".pptx", ".odp",
     ".odt", ".ods", ".txt",
+];
+
+const arraybleFields = ["relation", "file", "select"]
+
+const stringFields = ["text", "email", "url", "editor"]
+
+export const logLevels = [
+    // {
+    //     level: -8,
+    //     label: "TRACE",
+    //     class: "",
+    // },
+    {
+        level: -4,
+        label: "DEBUG",
+        class: "",
+    },
+    {
+        level: 0,
+        label: "INFO",
+        class: "label-success",
+    },
+    {
+        level: 4,
+        label: "WARN",
+        class: "label-warning",
+    },
+    {
+        level: 8,
+        label: "ERROR",
+        class: "label-danger",
+    },
 ];
 
 export default class CommonHelper {
@@ -42,13 +74,42 @@ export default class CommonHelper {
     }
 
     /**
+     * Returns the zero/empty value of val (only primitive values are supported).
+     * @param  {Mixed} val
+     * @return {Mixed}
+     */
+    static zeroValue(val) {
+        switch (typeof val) {
+            case "string":
+                return "";
+            case "number":
+                return 0;
+            case "boolean":
+                return false;
+            case "object":
+                if (val === null) {
+                    return null;
+                }
+
+                if (Array.isArray(val)) {
+                    return [];
+                }
+
+                return {};
+            case "undefined":
+                return undefined;
+            default:
+                return null;
+        }
+    }
+
+    /**
      * Checks whether a value is empty. The following values are considered as empty:
      * - null
      * - undefined
      * - empty string
      * - empty array
      * - empty object
-     * - zero uuid, time and dates
      *
      * @param  {Mixed} value
      * @return {Boolean}
@@ -57,9 +118,6 @@ export default class CommonHelper {
         return (
             (value === "") ||
             (value === null) ||
-            (value === "00000000-0000-0000-0000-000000000000") || // zero uuid
-            (value === "0001-01-01 00:00:00.000Z") || // zero datetime
-            (value === "0001-01-01") || // zero date
             (typeof value === "undefined") ||
             (Array.isArray(value) && value.length === 0) ||
             (CommonHelper.isObject(value) && Object.keys(value).length === 0)
@@ -178,6 +236,20 @@ export default class CommonHelper {
         if (!CommonHelper.inArray(arr, value)) {
             arr.push(value);
         }
+    }
+
+    /**
+     * Merges all `valuesArr` items that don't exist in `targetArr`.
+     *
+     * @param {Array} targetArr
+     * @param {Array} valuesArr
+     */
+    static mergeUnique(targetArr, valuesArr) {
+        for (let v of valuesArr) {
+            CommonHelper.pushUnique(targetArr, v)
+        }
+
+        return targetArr;
     }
 
     /**
@@ -313,7 +385,7 @@ export default class CommonHelper {
      */
     static getNestedVal(data, path, defaultVal = null, delimiter = ".") {
         let result = data || {};
-        let parts  = (path || "").split(delimiter);
+        let parts = (path || "").split(delimiter);
 
         for (const part of parts) {
             if (
@@ -348,8 +420,8 @@ export default class CommonHelper {
             return
         }
 
-        let result   = data;
-        let parts    = path.split(delimiter);
+        let result = data;
+        let parts = path.split(delimiter);
         let lastPart = parts.pop();
 
         for (const part of parts) {
@@ -381,8 +453,8 @@ export default class CommonHelper {
      * @param  {String}       delimiter
      */
     static deleteByPath(data, path, delimiter = ".") {
-        let result   = data || {};
-        let parts    = (path || "").split(delimiter);
+        let result = data || {};
+        let parts = (path || "").split(delimiter);
         let lastPart = parts.pop();
 
         for (const part of parts) {
@@ -502,8 +574,8 @@ export default class CommonHelper {
     static trimQuotedValue(val) {
         if (
             typeof val == "string" &&
-            (val[0] == `"`  || val[0] == `'` || val[0] == "`") &&
-            val[0] == val[val.length-1]
+            (val[0] == `"` || val[0] == `'` || val[0] == "`") &&
+            val[0] == val[val.length - 1]
         ) {
             return val.slice(1, -1);
         }
@@ -536,7 +608,7 @@ export default class CommonHelper {
      * @return {String}
      */
     static truncate(str, length = 150, dots = true) {
-        str = str || "";
+        str = ("" + str);
 
         if (str.length <= length) {
             return str;
@@ -638,7 +710,7 @@ export default class CommonHelper {
      * @return {String}
      */
     static escapeRegExp(str) {
-      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
     }
 
     /**
@@ -728,9 +800,9 @@ export default class CommonHelper {
     }
 
     /**
-     * Returns a DateTime instance from a date object/string.
+     * Returns a DateTime instance from a date object, string or number (in ms).
      *
-     * @param  {String|Date} date
+     * @param  {String|Number|Date} date
      * @return {DateTime}
      */
     static getDateTime(date) {
@@ -743,6 +815,10 @@ export default class CommonHelper {
             }
             const format = formats[date.length] || formats[19];
             return DateTime.fromFormat(date, format, { zone: "UTC" });
+        }
+
+        if (typeof date == "number") {
+            return DateTime.fromMillis(date);
         }
 
         return DateTime.fromJSDate(date);
@@ -798,6 +874,7 @@ export default class CommonHelper {
         const tempLink = document.createElement("a");
         tempLink.setAttribute("href", url);
         tempLink.setAttribute("download", name);
+        tempLink.setAttribute("target", "_blank");
         tempLink.click();
         tempLink.remove();
     }
@@ -809,11 +886,15 @@ export default class CommonHelper {
      * @param {String} name The result file name.
      */
     static downloadJson(obj, name) {
-        const encodedObj = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
-
         name = name.endsWith(".json") ? name : (name + ".json");
 
-        CommonHelper.download(encodedObj, name)
+        const blob = new Blob([JSON.stringify(obj, null, 2)], {
+            type: "application/json"
+        });
+
+        const url = window.URL.createObjectURL(blob);
+
+        CommonHelper.download(url, name)
     }
 
     /**
@@ -835,7 +916,7 @@ export default class CommonHelper {
             console.warn("Failed to parse JWT payload data.", err);
         }
 
-        return  {};
+        return {};
     }
 
     /**
@@ -909,10 +990,10 @@ export default class CommonHelper {
         return new Promise((resolve) => {
             let reader = new FileReader();
 
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 let img = new Image();
 
-                img.onload = function() {
+                img.onload = function () {
                     let canvas = document.createElement("canvas");
                     let ctx = canvas.getContext("2d");
                     let imgWidth = img.width;
@@ -980,109 +1061,64 @@ export default class CommonHelper {
      * @return {Object}
      */
     static dummyCollectionRecord(collection) {
-        const fields = collection?.schema || [];
-
-        const isAuth = collection?.type === "auth";
-        const isView = collection?.type === "view";
-
-        const dummy = {
-            "id": "RECORD_ID",
+        return Object.assign({
             "collectionId": collection?.id,
             "collectionName": collection?.name,
-        };
-
-        if (isAuth) {
-            dummy["username"] = "username123";
-            dummy["verified"] = false;
-            dummy["emailVisibility"] = true;
-            dummy["email"] = "test@example.com";
-        }
-
-        const hasCreated = !isView || CommonHelper.extractColumnsFromQuery(collection?.options?.query).includes("created");
-        if (hasCreated) {
-            dummy["created"] = "2022-01-01 01:00:00.123Z";
-        }
-
-        const hasUpdated = !isView || CommonHelper.extractColumnsFromQuery(collection?.options?.query).includes("updated");
-        if (hasUpdated) {
-            dummy["updated"] = "2022-01-01 23:59:59.456Z";
-        }
-
-        for (const field of fields) {
-            let val = null;
-            if (field.type === "number") {
-                val = 123;
-            } else if (field.type === "date") {
-                val = "2022-01-01 10:00:00.123Z";
-            } else if (field.type === "bool") {
-                val = true;
-            } else if (field.type === "email") {
-                val = "test@example.com";
-            } else if (field.type === "url") {
-                val = "https://example.com";
-            } else if (field.type === "json") {
-                val = 'JSON';
-            } else if (field.type === "file") {
-                val = 'filename.jpg';
-                if (field.options?.maxSelect !== 1) {
-                    val = [val];
-                }
-            } else if (field.type === "select") {
-                val = field.options?.values?.[0];
-                if (field.options?.maxSelect !== 1) {
-                    val = [val];
-                }
-            } else if (field.type === "relation") {
-                val = 'RELATION_RECORD_ID';
-                if (field.options?.maxSelect !== 1) {
-                    val = [val];
-                }
-            } else {
-                val = "test";
-            }
-
-            dummy[field.name] = val;
-        }
-
-        return dummy;
+        }, CommonHelper.dummyCollectionSchemaData(collection));
     }
 
     /**
-     * Returns a dummy collection schema data object.
+     * Returns a dummy collection fields data object.
      *
      * @param  {Object} collection
      * @return {Object}
      */
-    static dummyCollectionSchemaData(collection) {
-        const fields = collection?.schema || [];
+    static dummyCollectionSchemaData(collection, forSubmit = false) {
+        const fields = collection?.fields || [];
 
         const dummy = {};
 
         for (const field of fields) {
+            if (
+                field.hidden ||
+                (forSubmit && field.primaryKey && field.autogeneratePattern) ||
+                (forSubmit && field.type === "autodate")
+            ) {
+                continue
+            }
+
             let val = null;
 
             if (field.type === "number") {
                 val = 123;
-            } else if (field.type === "date") {
+            } else if (field.type === "date" || field.type === "autodate") {
                 val = "2022-01-01 10:00:00.123Z";
-            } else if (field.type === "bool") {
+            } else if (field.type == "bool") {
                 val = true;
-            } else if (field.type === "email") {
+            } else if (field.type == "email") {
                 val = "test@example.com";
-            } else if (field.type === "url") {
+            } else if (field.type == "url") {
                 val = "https://example.com";
-            } else if (field.type === "json") {
+            } else if (field.type == "json") {
                 val = 'JSON';
-            } else if (field.type === "file") {
-                continue; // currently file upload is supported only via FormData
-            } else if (field.type === "select") {
-                val = field.options?.values?.[0];
-                if (field.options?.maxSelect !== 1) {
+            } else if (field.type == "file") {
+                if (forSubmit) {
+                    // @todo add a File obj example after the refactoring
+                    continue
+                } else {
+                    val = "filename.jpg"
+                    if (field.maxSelect != 1) {
+                        val = [val];
+                    }
+                }
+            } else if (field.type == "select") {
+                val = field?.values?.[0];
+                if (field?.maxSelect != 1) {
                     val = [val];
                 }
-            } else if (field.type === "relation") {
+            } else if (field.type == "relation") {
                 val = 'RELATION_RECORD_ID';
-                if (field.options?.maxSelect !== 1) {
+                if (field?.maxSelect != 1) {
                     val = [val];
                 }
             } else {
@@ -1144,8 +1180,10 @@ export default class CommonHelper {
                 return "ri-image-line";
             case "relation":
                 return "ri-mind-map";
-            case "user":
-                return "ri-user-line";
+            case "password":
+                return "ri-lock-password-line";
+            case "autodate":
+                return "ri-calendar-check-line";
             default:
                 return "ri-star-s-line";
         }
@@ -1167,7 +1205,7 @@ export default class CommonHelper {
                 return 'File';
             case 'select':
             case 'relation':
-                if (field?.options?.maxSelect === 1) {
+                if (field?.maxSelect == 1) {
                     return 'String';
                 }
                 return 'Array<String>';
@@ -1196,7 +1234,7 @@ export default class CommonHelper {
         }
 
         // arrayable fields
-        if (["select", "relation", "file"].includes(field?.type) && field?.options?.maxSelect != 1) {
+        if (["select", "relation", "file"].includes(field?.type) && field?.maxSelect != 1) {
             return "[]";
         }
 
@@ -1218,11 +1256,11 @@ export default class CommonHelper {
     }
 
     /**
-     * Checks if the provided 2 collections has any change (ignoring root schema fields order).
+     * Checks if the provided 2 collections has any change (ignoring root fields order).
      *
      * @param  {Collection} oldCollection
      * @param  {Collection} newCollection
-     * @param  {Boolean}    withDeleteMissing Skip missing schema fields from the newCollection.
+     * @param  {Boolean}    withDeleteMissing Skip missing fields from the newCollection.
      * @return {Boolean}
      */
     static hasCollectionChanges(oldCollection, newCollection, withDeleteMissing = false) {
@@ -1234,21 +1272,21 @@ export default class CommonHelper {
         }
 
         for (let prop in oldCollection) {
-            if (prop !== 'schema' && JSON.stringify(oldCollection[prop]) !== JSON.stringify(newCollection[prop])) {
+            if (prop !== 'fields' && JSON.stringify(oldCollection[prop]) !== JSON.stringify(newCollection[prop])) {
                 return true;
             }
         }
 
-        const oldSchema = Array.isArray(oldCollection.schema) ? oldCollection.schema : [];
-        const newSchema = Array.isArray(newCollection.schema) ? newCollection.schema : [];
-        const removedFields = oldSchema.filter((oldField) => {
-            return oldField?.id && !CommonHelper.findByKey(newSchema, "id", oldField.id);
+        const oldFields = Array.isArray(oldCollection.fields) ? oldCollection.fields : [];
+        const newFields = Array.isArray(newCollection.fields) ? newCollection.fields : [];
+        const removedFields = oldFields.filter((oldField) => {
+            return oldField?.id && !CommonHelper.findByKey(newFields, "id", oldField.id);
         });
-        const addedFields = newSchema.filter((newField) => {
-            return newField?.id && !CommonHelper.findByKey(oldSchema, "id", newField.id);
+        const addedFields = newFields.filter((newField) => {
+            return newField?.id && !CommonHelper.findByKey(oldFields, "id", newField.id);
         });
-        const changedFields = newSchema.filter((newField) => {
-            const oldField = CommonHelper.isObject(newField) && CommonHelper.findByKey(oldSchema, "id", newField.id);
+        const changedFields = newFields.filter((newField) => {
+            const oldField = CommonHelper.isObject(newField) && CommonHelper.findByKey(oldFields, "id", newField.id);
             if (!oldField) {
                 return false;
             }
@@ -1303,6 +1341,40 @@ export default class CommonHelper {
         return [].concat(auth.sort(sortNames), base.sort(sortNames), view.sort(sortNames));
     }
 
+    /**
+     * Returns an expand list with the presentable nested relation fields (e.g. [base.sub1.sub11, base.sub2]).
+     *
+     * @param  {Object} baseRelField
+     * @param  {Array} collections
+     * @param  {Number} maxNestedLevel
+     * @return {Array}
+     */
+    static getExpandPresentableRelFields(baseRelField, collections, maxNestedLevel = 2) {
+        let result = [];
+
+        const collection = collections.find((c) => c.id == baseRelField.collectionId)
+        if (!collection) {
+            return result;
+        }
+
+        for (const field of collection.fields) {
+            if (!field.presentable || field.type != "relation" || maxNestedLevel <= 0) {
+                continue
+            }
+
+            const nestedExpands = CommonHelper.getExpandPresentableRelFields(field, collections, maxNestedLevel-1)
+            for (const expand of nestedExpands) {
+                result.push(baseRelField.name + "." + expand);
+            }
+        }
+
+        // add the base field if not already
+        if (!result.length) {
+            result.push(baseRelField.name);
+        }
+
+        return result;
+    }
 
     /**
      * "Yield" to the main thread to break long runing task into smaller ones.
@@ -1384,6 +1456,7 @@ export default class CommonHelper {
             height: 270,
             max_height: 700,
             autoresize_bottom_margin: 30,
+            convert_unsafe_embeds: true, // GHSA-5359
             skin: "pocketbase",
             content_style: "body { font-size: 14px }",
             plugins: [
@@ -1399,6 +1472,33 @@ export default class CommonHelper {
                 "code",
                 "codesample",
                 "directionality",
+            ],
+            codesample_global_prismjs: true,
+            codesample_languages: [
+                { text: 'HTML/XML', value: 'markup' },
+                { text: 'CSS', value: 'css' },
+                { text: 'SQL', value: 'sql' },
+                { text: 'JavaScript', value: 'javascript' },
+                { text: 'Go', value: 'go' },
+                { text: 'Dart', value: 'dart' },
+                { text: 'Zig', value: 'zig' },
+                { text: 'Rust', value: 'rust' },
+                { text: 'Lua', value: 'lua' },
+                { text: 'PHP', value: 'php' },
+                { text: 'Ruby', value: 'ruby' },
+                { text: 'Python', value: 'python' },
+                { text: 'Java', value: 'java' },
+                { text: 'C', value: 'c' },
+                { text: 'C#', value: 'csharp' },
+                { text: 'C++', value: 'cpp' },
+                // other non-highlighted languages
+                { text: 'Markdown', value: 'markdown' },
+                { text: 'Swift', value: 'swift' },
+                { text: 'Kotlin', value: 'kotlin' },
+                { text: 'Elixir', value: 'elixir' },
+                { text: 'Scala', value: 'scala' },
+                { text: 'Julia', value: 'julia' },
+                { text: 'Haskell', value: 'haskell' },
             ],
             toolbar: "styles | alignleft aligncenter alignright | bold italic forecolor backcolor | bullist numlist | link image_picker table codesample direction | code fullscreen",
             paste_postprocess: (editor, args) => {
@@ -1577,33 +1677,40 @@ export default class CommonHelper {
      * @param  {String} missingValue
      * @return {String}
      */
-    static stringifyValue(val, missingValue = "N/A") {
+    static stringifyValue(val, missingValue = "N/A", truncateLength = 150) {
         if (CommonHelper.isEmpty(val)) {
             return missingValue;
         }
 
-        if (typeof val === "boolean")  {
+        if (typeof val == "number") {
+            return "" + val;
+        }
+
+        if (typeof val == "boolean") {
             return val ? "True" : "False";
         }
 
-        if (typeof val === "string") {
+        if (typeof val == "string") {
             val = val.indexOf("<") >= 0 ? CommonHelper.plainText(val) : val;
-            return CommonHelper.truncate(val) || missingValue;
+            return CommonHelper.truncate(val, truncateLength) || missingValue;
         }
 
-        if (Array.isArray(val)) {
-            return val.join(",");
+        // plain array
+        if (Array.isArray(val) && typeof val[0] != "object") {
+            return CommonHelper.truncate(val.join(","), truncateLength);
         }
 
-        if (typeof val === "object") {
+        // json
+        if (typeof val == "object") {
             try {
-                return CommonHelper.truncate(JSON.stringify(val)) || missingValue;
+                return CommonHelper.truncate(JSON.stringify(val), truncateLength) || missingValue;
             } catch (_) {
                 return missingValue;
             }
         }
 
-        return "" + val;
+        // return as it is
+        return val;
     }
 
     /**
@@ -1640,7 +1747,7 @@ export default class CommonHelper {
     }
 
     /**
-     * Returns an array with all public collection identifiers (schema + type specific fields).
+     * Returns an array with all public collection identifiers (collection fields + type specific fields).
      *
      * @param  {[type]} collection The collection to extract identifiers from.
      * @param  {String} prefix     Optional prefix for each found identified.
@@ -1654,25 +1761,148 @@ export default class CommonHelper {
         let result = [prefix + "id"];
 
         if (collection.type === "view") {
-            for (let col of CommonHelper.extractColumnsFromQuery(collection.options.query)) {
+            for (let col of CommonHelper.extractColumnsFromQuery(collection.viewQuery)) {
                 CommonHelper.pushUnique(result, prefix + col);
             }
-        } else if (collection.type === "auth") {
-            result.push(prefix + "username");
-            result.push(prefix + "email");
-            result.push(prefix + "emailVisibility");
-            result.push(prefix + "verified");
-            result.push(prefix + "created");
-            result.push(prefix + "updated");
-        } else {
-            result.push(prefix + "created");
-            result.push(prefix + "updated");
         }
 
-        const schema = collection.schema || [];
-
-        for (const field of schema) {
+        const fields = collection.fields || [];
+        for (const field of fields) {
             CommonHelper.pushUnique(result, prefix + field.name);
+        }
+
+        return result;
+    }
+
+    /**
+     * Generates recursively a list with all the autocomplete field keys
+     * for the collectionNameOrId collection.
+     *
+     * @param  {Array}  collections
+     * @param  {String} collectionNameOrId
+     * @param  {String} [prefix]
+     * @param  {Number} [level]
+     * @return {Array}
+     */
+    static getCollectionAutocompleteKeys(collections, collectionNameOrId, prefix = "", level = 0) {
+        let collection = collections.find((item) => item.name == collectionNameOrId || item.id == collectionNameOrId);
+        if (!collection || level >= 4) {
+            return [];
+        }
+        collection.fields = collection.fields || [];
+
+        let result = CommonHelper.getAllCollectionIdentifiers(collection, prefix);
+
+        for (const field of collection.fields) {
+            const key = prefix + field.name;
+
+            // add relation fields
+            if (field.type == "relation" && field.collectionId) {
+                const subKeys = CommonHelper.getCollectionAutocompleteKeys(collections, field.collectionId, key + ".", level + 1);
+                if (subKeys.length) {
+                    result = result.concat(subKeys);
+                }
+            }
+
+            if (field.maxSelect != 1 && arraybleFields.includes(field.type)) {
+                // add ":length" and ":each" field modifiers to arrayble fields
+                result.push(key + ":each");
+                result.push(key + ":length");
+            } else if (stringFields.includes(field.type)) {
+                // add ":lower" field modifier to string fields
+                result.push(key + ":lower");
+            }
+        }
+
+        // add back relations
+        for (const ref of collections) {
+            ref.fields = ref.fields || [];
+            for (const field of ref.fields) {
+                if (field.type == "relation" && field.collectionId == collection.id) {
+                    const key = prefix + ref.name + "_via_" + field.name;
+                    const subKeys = CommonHelper.getCollectionAutocompleteKeys(collections, ref.id, key + ".", level + 2); // +2 to reduce the recursive results
+                    if (subKeys.length) {
+                        result = result.concat(subKeys);
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Generates a list with all @collection.* autocomplete field keys.
+     *
+     * @param  {Array} collections
+     * @return {Array}
+     */
+    static getCollectionJoinAutocompleteKeys(collections) {
+        const result = [];
+
+        let prefix, keys;
+
+        for (const collection of collections) {
+            if (collection.system) {
+                continue // skip system collections for now
+            }
+
+            prefix = "@collection." + collection.name + ".";
+            keys = CommonHelper.getCollectionAutocompleteKeys(collections, collection.name, prefix);
+            for (const key of keys) {
+                result.push(key);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Generates a list with all @request.* autocomplete field keys.
+     *
+     * @param  {Array}  collections
+     * @param  {String} baseCollectionName (used for the `@request.body.*` fields)
+     * @return {Array}
+     */
+    static getRequestAutocompleteKeys(collections, baseCollectionName) {
+        const result = [];
+
+        result.push("@request.context");
+        result.push("@request.method");
+        result.push("@request.query.");
+        result.push("@request.body.");
+        result.push("@request.headers.");
+        result.push("@request.auth.collectionId");
+        result.push("@request.auth.collectionName");
+
+        // load auth collection fields
+        const authCollections = collections.filter((collection) => collection.type === "auth");
+        for (const collection of authCollections) {
+            if (collection.system) {
+                continue // skip system collections for now
+            }
+            const authKeys = CommonHelper.getCollectionAutocompleteKeys(collections, collection.id, "@request.auth.");
+            for (const k of authKeys) {
+                CommonHelper.pushUnique(result, k);
+            }
+        }
+
+        // load base collection fields into @request.body.*
+        if (baseCollectionName) {
+            const keys = CommonHelper.getCollectionAutocompleteKeys(collections, baseCollectionName, "@request.body.");
+            for (const key of keys) {
+                result.push(key);
+
+                // add ":isset" modifier to non-base keys
+                const parts = key.split(".");
+                if (
+                    parts.length === 3 &&
+                    // doesn't contain another modifier
+                    parts[2].indexOf(":") === -1
+                ) {
+                    result.push(key + ":isset");
+                }
+            }
         }
 
         return result;
@@ -1702,17 +1932,17 @@ export default class CommonHelper {
      */
     static parseIndex(idx) {
         const result = {
-            unique:     false,
-            optional:   false,
+            unique: false,
+            optional: false,
             schemaName: "",
-            indexName:  "",
-            tableName:  "",
-            columns:    [],
-            where:      "",
+            indexName: "",
+            tableName: "",
+            columns: [],
+            where: "",
         };
 
         const indexRegex = /create\s+(unique\s+)?\s*index\s*(if\s+not\s+exists\s+)?(\S*)\s+on\s+(\S*)\s*\(([\s\S]*)\)(?:\s*where\s+([\s\S]*))?/gmi;
-        const matches    = indexRegex.exec((idx || "").trim())
+        const matches = indexRegex.exec((idx || "").trim())
 
         if (matches?.length != 7) {
             return result;
@@ -1758,9 +1988,9 @@ export default class CommonHelper {
                 continue;
             }
             result.columns.push({
-                name:    colOrExpr,
+                name: colOrExpr,
                 collate: colMatches[2] || "",
-                sort:    colMatches[3]?.toUpperCase() || "",
+                sort: colMatches[3]?.toUpperCase() || "",
             });
         }
 
@@ -1793,7 +2023,7 @@ export default class CommonHelper {
             result += `\`${indexParts.schemaName}\`.`;
         }
 
-        result += `\`${indexParts.indexName || "idx_" + CommonHelper.randomString(7)}\` `;
+        result += `\`${indexParts.indexName || "idx_" + CommonHelper.randomString(10)}\` `;
 
         result += `ON \`${indexParts.tableName}\` (`;
 
@@ -1804,26 +2034,26 @@ export default class CommonHelper {
         }
 
         result += nonEmptyCols.map((col) => {
-                let item = "";
+            let item = "";
 
-                if (col.name.includes("(") || col.name.includes(" ")) {
-                    // most likely an expression
-                    item += col.name;
-                } else {
-                    // regular identifier
-                    item += ("`" + col.name + "`");
-                }
+            if (col.name.includes("(") || col.name.includes(" ")) {
+                // most likely an expression
+                item += col.name;
+            } else {
+                // regular identifier
+                item += ("`" + col.name + "`");
+            }
 
-                if (col.collate) {
-                    item += (" COLLATE " + col.collate);
-                }
+            if (col.collate) {
+                item += (" COLLATE " + col.collate);
+            }
 
-                if (col.sort) {
-                    item += (" " + col.sort.toUpperCase());
-                }
+            if (col.sort) {
+                item += (" " + col.sort.toUpperCase());
+            }
 
-                return item;
-            })
+            return item;
+        })
             .join(",\n  ");
 
         if (nonEmptyCols.length > 1) {
@@ -1913,28 +2143,14 @@ export default class CommonHelper {
     }
 
     /**
-     * Iniitialize a new blank Collection POJO and merge it with the provided data (if any).
+     * The same as normalizeSearchFilter() but with preset common logs fields.
      *
-     * @param  {Object} [data]
-     * @return {Object}
+     * @param  {String} searchTerm
+     * @param  {Array}  fallbackFields
+     * @return {String}
      */
-    static initCollection(data) {
-        return Object.assign({
-            id:         '',
-            created:    '',
-            updated:    '',
-            name:       '',
-            type:       'base',
-            system:     false,
-            listRule:   null,
-            viewRule:   null,
-            createRule: null,
-            updateRule: null,
-            deleteRule: null,
-            schema:     [],
-            indexes:    [],
-            options:    {},
-        }, data);
+    static normalizeLogsFilter(searchTerm, extraFallbackFields = []) {
+        return CommonHelper.normalizeSearchFilter(searchTerm, ["level", "message", "data"].concat(extraFallbackFields));
     }
 
     /**
@@ -1945,12 +2161,12 @@ export default class CommonHelper {
      */
     static initSchemaField(data) {
         return Object.assign({
-            id:       '',
-            name:     '',
-            type:     'text',
-            system:   false,
+            id: '',
+            name: '',
+            type: 'text',
+            system: false,
+            hidden: false,
             required: false,
-            options:  {},
         }, data);
     }
 

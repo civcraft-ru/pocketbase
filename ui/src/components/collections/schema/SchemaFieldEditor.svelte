@@ -1,27 +1,30 @@
 <script>
-    import CommonHelper from "@/utils/CommonHelper";
     import tooltip from "@/actions/tooltip";
     import Field from "@/components/base/Field.svelte";
     import SchemaField from "@/components/collections/schema/SchemaField.svelte";
 
     export let field;
     export let key = "";
-
-    $: if (CommonHelper.isEmpty(field.options)) {
-        loadDefaults();
-    }
-
-    function loadDefaults() {
-        field.options = {
-            convertUrls: false,
-        };
-    }
 </script>
 
-<SchemaField bind:field {key} on:rename on:remove {...$$restProps}>
-    <svelte:fragment slot="optionsFooter">
-        <Field class="form-field form-field-toggle" name="schema.{key}.options.convertUrls" let:uniqueId>
-            <input type="checkbox" id={uniqueId} bind:checked={field.options.convertUrls} />
+<SchemaField bind:field {key} on:rename on:remove on:duplicate {...$$restProps}>
+    <svelte:fragment slot="options">
+        <Field class="form-field m-b-sm" name="fields.{key}.maxSize" let:uniqueId>
+            <label for={uniqueId}>Max size <small>(bytes)</small></label>
+            <input
+                type="number"
+                id={uniqueId}
+                step="1"
+                min="0"
+                max={Number.MAX_SAFE_INTEGER}
+                value={field.maxSize || ""}
+                on:input={(e) => (field.maxSize = parseInt(e.target.value, 10))}
+                placeholder="Default to max ~5MB"
+            />
+        </Field>
+
+        <Field class="form-field form-field-toggle" name="fields.{key}.convertURLs" let:uniqueId>
+            <input type="checkbox" id={uniqueId} bind:checked={field.convertURLs} />
             <label for={uniqueId}>
                 <span class="txt">Strip urls domain</span>
                 <i

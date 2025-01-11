@@ -1,20 +1,34 @@
-import { writable } from "svelte/store";
-import ApiClient    from "@/utils/ApiClient";
+import ApiClient from "@/utils/ApiClient";
 import CommonHelper from "@/utils/CommonHelper";
+import { get, writable } from "svelte/store";
 
-export const collections                    = writable([]);
-export const activeCollection               = writable({});
-export const isCollectionsLoading           = writable(false);
+export const collections = writable([]);
+export const activeCollection = writable({});
+export const isCollectionsLoading = writable(false);
 export const protectedFilesCollectionsCache = writable({});
+export const scaffolds = writable({});
 
-export function changeActiveCollectionById(collectionId) {
+let notifyChannel;
+
+if (typeof BroadcastChannel != "undefined") {
+    notifyChannel = new BroadcastChannel("collections");
+
+    notifyChannel.onmessage = () => {
+        loadCollections(get(activeCollection)?.id)
+    }
+}
+
+function notifyOtherTabs() {
+    notifyChannel?.postMessage("reload");
+}
+
+export function changeActiveCollectionByIdOrName(collectionIdOrName) {
     collections.update((list) => {
-        const found = CommonHelper.findByKey(list, "id", collectionId);
-
+        const found = list.find((c) => c.id == collectionIdOrName || c.name == collectionIdOrName);
         if (found) {
             activeCollection.set(found);
         } else if (list.length) {
-            activeCollection.set(list[0]);
+            activeCollection.set(list.find((c) => !c.system) || list[0]);
         }
 
         return list;
@@ -32,6 +46,8 @@ export function addCollection(collection) {
 
         refreshProtectedFilesCollectionsCache();
 
+        notifyOtherTabs();
+
         return CommonHelper.sortCollections(list);
     });
 }
@@ -42,35 +58,41 @@ export function removeCollection(collection) {
 
         activeCollection.update((current) => {
             if (current.id === collection.id) {
-                return list[0];
+                return list.find((c) => !c.system) || list[0];
             }
             return current;
         });
 
         refreshProtectedFilesCollectionsCache();
 
+        notifyOtherTabs();
+
         return list;
     });
 }
 
-// load all collections (excluding the user profile)
-export async function loadCollections(activeId = null) {
+// load all collections
+export async function loadCollections(activeIdOrName = null) {
     isCollectionsLoading.set(true);
 
     try {
-        let items = await ApiClient.collections.getFullList(200, {
-            "sort": "+name",
-        })
+        const promises = [];
+        promises.push(ApiClient.collections.getScaffolds());
+        promises.push(ApiClient.collections.getFullList());
 
-        items = CommonHelper.sortCollections(items);
+        let [resultScaffolds, resultCollections] = await Promise.all(promises);
 
-        collections.set(items);
+        scaffolds.set(resultScaffolds);
 
-        const item = activeId && CommonHelper.findByKey(items, "id", activeId);
-        if (item) {
-            activeCollection.set(item);
-        } else if (items.length) {
-            activeCollection.set(items[0]);
+        resultCollections = CommonHelper.sortCollections(resultCollections);
+
+        collections.set(resultCollections);
+
+        const found = activeIdOrName && resultCollections.find((c) => c.id == activeIdOrName || c.name == activeIdOrName);
+        if (found) {
+            activeCollection.set(found);
+        } else if (resultCollections.length) {
+            activeCollection.set(resultCollections.find((c) => !c.system) || resultCollections[0]);
         }
 
         refreshProtectedFilesCollectionsCache();
@@ -85,7 +107,7 @@ function refreshProtectedFilesCollectionsCache() {
     protectedFilesCollectionsCache.update((cache) => {
         collections.update((current) => {
             for (let c of current) {
-                cache[c.id] = !!c.schema?.find((f) => f.type == "file" && f.options?.protected);
+                cache[c.id] = !!c.fields?.find((f) => f.type == "file" && f.protected);
             }
 
             return current;

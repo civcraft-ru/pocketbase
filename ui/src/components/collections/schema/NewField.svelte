@@ -1,7 +1,7 @@
 <script>
-    import { createEventDispatcher } from "svelte";
-    import CommonHelper from "@/utils/CommonHelper";
     import Toggler from "@/components/base/Toggler.svelte";
+    import CommonHelper from "@/utils/CommonHelper";
+    import { createEventDispatcher } from "svelte";
 
     let classes = "";
     export { classes as class }; // export reserved keyword
@@ -35,7 +35,7 @@
             icon: CommonHelper.getFieldTypeIcon("email"),
         },
         {
-            label: "Url",
+            label: "URL",
             value: "url",
             icon: CommonHelper.getFieldTypeIcon("url"),
         },
@@ -43,6 +43,11 @@
             label: "DateTime",
             value: "date",
             icon: CommonHelper.getFieldTypeIcon("date"),
+        },
+        {
+            label: "Autodate",
+            value: "autodate",
+            icon: CommonHelper.getFieldTypeIcon("autodate"),
         },
         {
             label: "Select",
@@ -64,6 +69,11 @@
             value: "json",
             icon: CommonHelper.getFieldTypeIcon("json"),
         },
+        // {
+        //     label: "Password",
+        //     value: "password",
+        //     icon: CommonHelper.getFieldTypeIcon("password"),
+        // },
     ];
 
     function select(fieldType) {
@@ -71,29 +81,18 @@
     }
 </script>
 
-<button type="button" class="field-types-btn {classes}" on:click={dispatch}>
-    <i class="ri-add-line" />
+<div tabindex="0" role="button" class="field-types-btn {classes}">
+    <i class="ri-add-line" aria-hidden="true" />
     <div class="txt">New field</div>
     <Toggler class="dropdown field-types-dropdown">
         {#each types as item}
-            <div
-                tabindex="0"
-                class="dropdown-item closable"
-                on:click|stopPropagation={() => {
-                    select(item.value);
-                }}
-                on:keydown|stopPropagation={(e) => {
-                    if (e.code === "Enter" || e.code === "Space") {
-                        select(item.value);
-                    }
-                }}
-            >
-                <i class="icon {item.icon}" />
+            <button type="button" role="menuitem" class="dropdown-item" on:click={() => select(item.value)}>
+                <i class="icon {item.icon}" aria-hidden="true" />
                 <span class="txt">{item.label}</span>
-            </div>
+            </button>
         {/each}
     </Toggler>
-</button>
+</div>
 
 <style lang="scss">
     .field-types-btn.active {

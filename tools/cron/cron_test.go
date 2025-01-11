@@ -2,11 +2,14 @@ package cron
 
 import (
 	"encoding/json"
+	"slices"
 	"testing"
 	"time"
 )
 
 func TestCronNew(t *testing.T) {
+	t.Parallel()
+
 	c := New()
 
 	expectedInterval := 1 * time.Minute
@@ -29,6 +32,8 @@ func TestCronNew(t *testing.T) {
 }
 
 func TestCronSetInterval(t *testing.T) {
+	t.Parallel()
+
 	c := New()
 
 	interval := 2 * time.Minute
@@ -41,6 +46,8 @@ func TestCronSetInterval(t *testing.T) {
 }
 
 func TestCronSetTimezone(t *testing.T) {
+	t.Parallel()
+
 	c := New()
 
 	timezone, _ := time.LoadLocation("Asia/Tokyo")
@@ -53,6 +60,8 @@ func TestCronSetTimezone(t *testing.T) {
 }
 
 func TestCronAddAndRemove(t *testing.T) {
+	t.Parallel()
+
 	c := New()
 
 	if err := c.Add("test0", "* * * * *", nil); err == nil {
@@ -90,6 +99,11 @@ func TestCronAddAndRemove(t *testing.T) {
 	// try to remove non-existing (should be no-op)
 	c.Remove("missing")
 
+	indexedJobs := make(map[string]*Job, len(c.jobs))
+	for _, j := range c.jobs {
+		indexedJobs[j.Id()] = j
+	}
+
 	// check job keys
 	{
 		expectedKeys := []string{"test3", "test2", "test5"}
@@ -99,7 +113,7 @@ func TestCronAddAndRemove(t *testing.T) {
 		}
 
 		for _, k := range expectedKeys {
-			if c.jobs[k] == nil {
+			if indexedJobs[k] == nil {
 				t.Fatalf("Expected job with key %s, got nil", k)
 			}
 		}
@@ -113,7 +127,7 @@ func TestCronAddAndRemove(t *testing.T) {
 			"test5": `{"minutes":{"1":{}},"hours":{"2":{}},"days":{"3":{}},"months":{"4":{}},"daysOfWeek":{"5":{}}}`,
 		}
 		for k, v := range expectedSchedules {
-			raw, err := json.Marshal(c.jobs[k].schedule)
+			raw, err := json.Marshal(indexedJobs[k].schedule)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -126,6 +140,8 @@ func TestCronAddAndRemove(t *testing.T) {
 }
 
 func TestCronMustAdd(t *testing.T) {
+	t.Parallel()
+
 	c := New()
 
 	defer func() {
@@ -138,12 +154,14 @@ func TestCronMustAdd(t *testing.T) {
 
 	c.MustAdd("test2", "* * * * *", func() {})
 
-	if _, ok := c.jobs["test2"]; !ok {
+	if !slices.ContainsFunc(c.jobs, func(j *Job) bool { return j.Id() == "test2" }) {
 		t.Fatal("Couldn't find job test2")
 	}
 }
 
 func TestCronRemoveAll(t *testing.T) {
+	t.Parallel()
+
 	c := New()
 
 	if err := c.Add("test1", "* * * * *", func() {}); err != nil {
@@ -170,6 +188,8 @@ func TestCronRemoveAll(t *testing.T) {
 }
 
 func TestCronTotal(t *testing.T) {
+	t.Parallel()
+
 	c := New()
 
 	if v := c.Total(); v != 0 {
@@ -194,13 +214,51 @@ func TestCronTotal(t *testing.T) {
 	}
 }
 
-func TestCronStartStop(t *testing.T) {
+func TestCronJobs(t *testing.T) {
+	t.Parallel()
+
 	c := New()
 
-	c.SetInterval(1 * time.Second)
+	calls := ""
+
+	if err := c.Add("a", "1 * * * *", func() { calls += "a" }); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c.Add("b", "2 * * * *", func() { calls += "b" }); err != nil {
+		t.Fatal(err)
+	}
+
+	// overwrite
+	if err := c.Add("b", "3 * * * *", func() { calls += "b" }); err != nil {
+		t.Fatal(err)
+	}
+
+	jobs := c.Jobs()
+
+	if len(jobs) != 2 {
+		t.Fatalf("Expected 2 jobs, got %v", len(jobs))
+	}
+
+	for _, j := range jobs {
+		j.Run()
+	}
+
+	expectedCalls := "ab"
+	if calls != expectedCalls {
+		t.Fatalf("Expected %q calls, got %q", expectedCalls, calls)
+	}
+}
+
+func TestCronStartStop(t *testing.T) {
+	t.Parallel()
 
 	test1 := 0
 	test2 := 0
+
+	c := New()
+
+	c.SetInterval(500 * time.Millisecond)
 
 	c.Add("test1", "* * * * *", func() {
 		test1++
@@ -210,13 +268,13 @@ func TestCronStartStop(t *testing.T) {
 		test2++
 	})
 
-	expectedCalls := 3
+	expectedCalls := 2
 
 	// call twice Start to check if the previous ticker will be reseted
 	c.Start()
 	c.Start()
 
-	time.Sleep(3250 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 
 	// call twice Stop to ensure that the second stop is no-op
 	c.Stop()
@@ -229,12 +287,14 @@ func TestCronStartStop(t *testing.T) {
 		t.Fatalf("Expected %d test2, got %d", expectedCalls, test2)
 	}
 
-	// resume for ~5 seconds
+	// resume for 2 seconds
 	c.Start()
-	time.Sleep(5250 * time.Millisecond)
+
+	time.Sleep(2 * time.Second)
+
 	c.Stop()
 
-	expectedCalls += 5
+	expectedCalls += 4
 
 	if test1 != expectedCalls {
 		t.Fatalf("Expected %d test1, got %d", expectedCalls, test1)

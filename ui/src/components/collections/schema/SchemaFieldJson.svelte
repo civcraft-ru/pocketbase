@@ -1,6 +1,7 @@
 <script>
-    import { slide } from "svelte/transition";
+    import Field from "@/components/base/Field.svelte";
     import SchemaField from "@/components/collections/schema/SchemaField.svelte";
+    import { slide } from "svelte/transition";
 
     export let field;
     export let key = "";
@@ -8,11 +9,25 @@
     let showInfo = false;
 </script>
 
-<SchemaField bind:field {key} on:rename on:remove {...$$restProps}>
+<SchemaField bind:field {key} on:rename on:remove on:duplicate {...$$restProps}>
     <svelte:fragment slot="options">
+        <Field class="form-field m-b-sm" name="fields.{key}.maxSize" let:uniqueId>
+            <label for={uniqueId}>Max size <small>(bytes)</small></label>
+            <input
+                type="number"
+                id={uniqueId}
+                step="1"
+                min="0"
+                max={Number.MAX_SAFE_INTEGER}
+                value={field.maxSize || ""}
+                on:input={(e) => (field.maxSize = parseInt(e.target.value, 10))}
+                placeholder="Default to max ~5MB"
+            />
+        </Field>
+
         <button
             type="button"
-            class="inline-flex txt-sm flex-gap-5 link-hint"
+            class="btn btn-sm {showInfo ? 'btn-secondary' : 'btn-hint btn-transparent'}"
             on:click={() => {
                 showInfo = !showInfo;
             }}
@@ -24,7 +39,6 @@
                 <i class="ri-arrow-down-s-line txt-sm" />
             {/if}
         </button>
-
         {#if showInfo}
             <div class="block" transition:slide={{ duration: 150 }}>
                 <div class="alert alert-warning m-b-0 m-t-10">

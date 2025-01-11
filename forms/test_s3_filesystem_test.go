@@ -9,8 +9,7 @@ import (
 )
 
 func TestS3FilesystemValidate(t *testing.T) {
-	app, _ := tests.NewTestApp()
-	defer app.Cleanup()
+	t.Parallel()
 
 	scenarios := []struct {
 		name           string
@@ -40,32 +39,37 @@ func TestS3FilesystemValidate(t *testing.T) {
 	}
 
 	for _, s := range scenarios {
-		form := forms.NewTestS3Filesystem(app)
-		form.Filesystem = s.filesystem
+		t.Run(s.name, func(t *testing.T) {
+			app, _ := tests.NewTestApp()
+			defer app.Cleanup()
 
-		result := form.Validate()
+			form := forms.NewTestS3Filesystem(app)
+			form.Filesystem = s.filesystem
 
-		// parse errors
-		errs, ok := result.(validation.Errors)
-		if !ok && result != nil {
-			t.Errorf("[%s] Failed to parse errors %v", s.name, result)
-			continue
-		}
+			result := form.Validate()
 
-		// check errors
-		if len(errs) > len(s.expectedErrors) {
-			t.Errorf("[%s] Expected error keys %v, got %v", s.name, s.expectedErrors, errs)
-			continue
-		}
-		for _, k := range s.expectedErrors {
-			if _, ok := errs[k]; !ok {
-				t.Errorf("[%s] Missing expected error key %q in %v", s.name, k, errs)
+			// parse errors
+			errs, ok := result.(validation.Errors)
+			if !ok && result != nil {
+				t.Fatalf("Failed to parse errors %v", result)
 			}
-		}
+
+			// check errors
+			if len(errs) > len(s.expectedErrors) {
+				t.Fatalf("Expected error keys %v, got %v", s.expectedErrors, errs)
+			}
+			for _, k := range s.expectedErrors {
+				if _, ok := errs[k]; !ok {
+					t.Fatalf("Missing expected error key %q in %v", k, errs)
+				}
+			}
+		})
 	}
 }
 
 func TestS3FilesystemSubmitFailure(t *testing.T) {
+	t.Parallel()
+
 	app, _ := tests.NewTestApp()
 	defer app.Cleanup()
 

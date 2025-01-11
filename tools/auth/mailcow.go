@@ -6,8 +6,13 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/pocketbase/pocketbase/tools/types"
 	"golang.org/x/oauth2"
 )
+
+func init() {
+	Providers[NameMailcow] = wrapFactory(NewMailcowProvider)
+}
 
 var _ Provider = (*Mailcow)(nil)
 
@@ -16,14 +21,16 @@ const NameMailcow string = "mailcow"
 
 // Mailcow allows authentication via mailcow OAuth2.
 type Mailcow struct {
-	*baseProvider
+	BaseProvider
 }
 
 // NewMailcowProvider creates a new mailcow provider instance with some defaults.
 func NewMailcowProvider() *Mailcow {
-	return &Mailcow{&baseProvider{
-		ctx:    context.Background(),
-		scopes: []string{"profile"},
+	return &Mailcow{BaseProvider{
+		ctx:         context.Background(),
+		displayName: "mailcow",
+		pkce:        true,
+		scopes:      []string{"profile"},
 	}}
 }
 
@@ -31,7 +38,7 @@ func NewMailcowProvider() *Mailcow {
 //
 // API reference: https://github.com/mailcow/mailcow-dockerized/blob/master/data/web/oauth/profile.php
 func (p *Mailcow) FetchAuthUser(token *oauth2.Token) (*AuthUser, error) {
-	data, err := p.FetchRawUserData(token)
+	data, err := p.FetchRawUserInfo(token)
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +72,8 @@ func (p *Mailcow) FetchAuthUser(token *oauth2.Token) (*AuthUser, error) {
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
 	}
+
+	user.Expiry, _ = types.ParseDateTime(token.Expiry)
 
 	// mailcow usernames are usually just the email adresses, so we just take the part in front of the @
 	if strings.Contains(user.Username, "@") {

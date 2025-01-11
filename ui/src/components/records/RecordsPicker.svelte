@@ -1,15 +1,15 @@
 <script>
-    import { createEventDispatcher } from "svelte";
-    import CommonHelper from "@/utils/CommonHelper";
-    import ApiClient from "@/utils/ApiClient";
     import scrollend from "@/actions/scrollend";
     import tooltip from "@/actions/tooltip";
+    import Draggable from "@/components/base/Draggable.svelte";
     import OverlayPanel from "@/components/base/OverlayPanel.svelte";
     import Searchbar from "@/components/base/Searchbar.svelte";
-    import Draggable from "@/components/base/Draggable.svelte";
     import RecordInfo from "@/components/records/RecordInfo.svelte";
     import RecordUpsertPanel from "@/components/records/RecordUpsertPanel.svelte";
     import { collections } from "@/stores/collections";
+    import ApiClient from "@/utils/ApiClient";
+    import CommonHelper from "@/utils/CommonHelper";
+    import { createEventDispatcher } from "svelte";
 
     const dispatch = createEventDispatcher();
     const uniqueId = "picker_" + CommonHelper.randomString(5);
@@ -27,10 +27,11 @@
     let lastItemsCount = 0;
     let isLoadingList = false;
     let isLoadingSelected = false;
+    let isReloadingRecord = {};
 
-    $: maxSelect = field?.options?.maxSelect || null;
+    $: maxSelect = field?.maxSelect || null;
 
-    $: collectionId = field?.options?.collectionId;
+    $: collectionId = field?.collectionId;
 
     $: collection = $collections.find((c) => c.id == collectionId) || null;
 
@@ -44,7 +45,7 @@
 
     $: canLoadMore = lastItemsCount == batchSize;
 
-    $: canSelectMore = maxSelect === null || maxSelect > selected.length;
+    $: canSelectMore = maxSelect <= 0 || maxSelect > selected.length;
 
     export function show() {
         filter = "";
@@ -58,6 +59,19 @@
 
     export function hide() {
         return pickerPanel?.hide();
+    }
+
+    function getExpand() {
+        let expands = [];
+
+        const presentableRelFields = collection?.fields?.filter(
+            (f) => !f.hidden && f.presentable && f.type == "relation",
+        );
+        for (const field of presentableRelFields) {
+            expands = expands.concat(CommonHelper.getExpandPresentableRelFields(field, $collections, 2));
+        }
+
+        return expands.join(",");
     }
 
     async function loadSelected() {
@@ -85,8 +99,9 @@
                     batch: batchSize,
                     filter: filters.join("||"),
                     fields: "*:excerpt(200)",
+                    expand: getExpand(),
                     requestKey: null,
-                })
+                }),
             );
         }
 
@@ -139,11 +154,17 @@
 
             const fallbackSearchFields = CommonHelper.getAllCollectionIdentifiers(collection);
 
+            let sort = "";
+            if (!isView) {
+                sort = "-@rowid"; // all collections with exception to the view has this field
+            }
+
             const result = await ApiClient.collection(collectionId).getList(page, batchSize, {
                 filter: CommonHelper.normalizeSearchFilter(filter, fallbackSearchFields),
-                sort: !isView ? "-created" : "",
+                sort: sort,
                 fields: "*:excerpt(200)",
                 skipTotal: 1,
+                expand: getExpand(),
                 requestKey: uniqueId + "loadList",
             });
 
@@ -156,6 +177,34 @@
             if (!err.isAbort) {
                 ApiClient.error(err);
                 isLoadingList = false;
+            }
+        }
+    }
+
+    async function reloadRecord(record) {
+        if (!record?.id) {
+            return;
+        }
+
+        isReloadingRecord[record.id] = true;
+
+        try {
+            const reloaded = await ApiClient.collection(collectionId).getOne(record.id, {
+                fields: "*:excerpt(200)",
+                expand: getExpand(),
+                requestKey: uniqueId + "reload" + record.id,
+            });
+
+            CommonHelper.pushOrReplaceByKey(selected, reloaded);
+            CommonHelper.pushOrReplaceByKey(list, reloaded);
+            selected = selected;
+            list = list;
+
+            isReloadingRecord[record.id] = false;
+        } catch (err) {
+            if (!err.isAbort) {
+                ApiClient.error(err);
+                isReloadingRecord[record.id] = false;
             }
         }
     }
@@ -233,11 +282,14 @@
         {#each list as record (record.id)}
             {@const selected = isSelected(record)}
 
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
             <div
                 tabindex="0"
                 class="list-item handle"
                 class:selected
-                class:disabled={!selected && maxSelect > 1 && !canSelectMore}
+                class:disabled={isReloadingRecord[record.id] ||
+                    (!selected && maxSelect > 1 && !canSelectMore)}
                 on:click={() => toggle(record)}
                 on:keydown={(e) => {
                     if (e.code === "Enter" || e.code === "Space") {
@@ -253,7 +305,11 @@
                     <i class="ri-checkbox-blank-circle-line txt-disabled" />
                 {/if}
                 <div class="content">
-                    <RecordInfo {record} />
+                    {#if isReloadingRecord[record.id]}
+                        <span class="loader loader-xs active"></span>
+                    {:else}
+                        <RecordInfo {record} />
+                    {/if}
                 </div>
                 {#if !isView}
                     <div class="actions nonintrusive">
@@ -262,7 +318,7 @@
                             class="btn btn-sm btn-circle btn-transparent btn-hint m-l-auto"
                             use:tooltip={"Edit"}
                             on:keydown|stopPropagation
-                            on:click|stopPropagation={() => upsertPanel?.show(record)}
+                            on:click|stopPropagation={() => upsertPanel?.show(record.id)}
                         >
                             <i class="ri-pencil-line" />
                         </button>
@@ -302,7 +358,11 @@
             {#each selected as record, i}
                 <Draggable bind:list={selected} index={i} let:dragging let:dragover>
                     <span class="label" class:label-danger={dragging} class:label-warning={dragover}>
-                        <RecordInfo {record} />
+                        {#if isReloadingRecord[record.id]}
+                            <span class="loader loader-xs active"></span>
+                        {:else}
+                            <RecordInfo {record} />
+                        {/if}
                         <button
                             type="button"
                             title="Remove"
@@ -338,6 +398,8 @@
         list = list;
 
         select(e.detail.record);
+
+        reloadRecord(e.detail.record);
     }}
     on:delete={(e) => {
         CommonHelper.removeByKey(list, "id", e.detail.id);

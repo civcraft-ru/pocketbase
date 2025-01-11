@@ -3,25 +3,38 @@ package mailer
 import (
 	"io"
 	"net/mail"
+
+	"github.com/pocketbase/pocketbase/tools/hook"
 )
 
 // Message defines a generic email message struct.
 type Message struct {
-	From        mail.Address         `json:"from"`
-	To          []mail.Address       `json:"to"`
-	Bcc         []mail.Address       `json:"bcc"`
-	Cc          []mail.Address       `json:"cc"`
-	Subject     string               `json:"subject"`
-	HTML        string               `json:"html"`
-	Text        string               `json:"text"`
-	Headers     map[string]string    `json:"headers"`
-	Attachments map[string]io.Reader `json:"attachments"`
+	From              mail.Address         `json:"from"`
+	To                []mail.Address       `json:"to"`
+	Bcc               []mail.Address       `json:"bcc"`
+	Cc                []mail.Address       `json:"cc"`
+	Subject           string               `json:"subject"`
+	HTML              string               `json:"html"`
+	Text              string               `json:"text"`
+	Headers           map[string]string    `json:"headers"`
+	Attachments       map[string]io.Reader `json:"attachments"`
+	InlineAttachments map[string]io.Reader `json:"inlineAttachments"`
 }
 
 // Mailer defines a base mail client interface.
 type Mailer interface {
 	// Send sends an email with the provided Message.
 	Send(message *Message) error
+}
+
+// SendInterceptor is optional interface for registering mail send hooks.
+type SendInterceptor interface {
+	OnSend() *hook.Hook[*SendEvent]
+}
+
+type SendEvent struct {
+	hook.Event
+	Message *Message
 }
 
 // addressesToStrings converts the provided address to a list of serialized RFC 5322 strings.

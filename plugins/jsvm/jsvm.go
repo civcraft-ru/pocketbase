@@ -4,13 +4,15 @@
 // Example:
 //
 //	jsvm.MustRegister(app, jsvm.Config{
-//		WatchHooks: true,
+//		HooksWatch: true,
 //	})
 package jsvm
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -20,25 +22,26 @@ import (
 	"time"
 
 	"github.com/dop251/goja"
+	"github.com/dop251/goja_nodejs/buffer"
 	"github.com/dop251/goja_nodejs/console"
 	"github.com/dop251/goja_nodejs/process"
 	"github.com/dop251/goja_nodejs/require"
 	"github.com/fatih/color"
 	"github.com/fsnotify/fsnotify"
-	"github.com/labstack/echo/v5"
-	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
-	m "github.com/pocketbase/pocketbase/migrations"
 	"github.com/pocketbase/pocketbase/plugins/jsvm/internal/types/generated"
 	"github.com/pocketbase/pocketbase/tools/template"
 )
 
-const (
-	typesFileName = "types.d.ts"
-)
+const typesFileName = "types.d.ts"
 
 // Config defines the config options of the jsvm plugin.
 type Config struct {
+	// OnInit is an optional function that will be called
+	// after a JS runtime is initialized, allowing you to
+	// attach custom Go variables and functions.
+	OnInit func(vm *goja.Runtime)
+
 	// HooksWatch enables auto app restarts when a JS app hook file changes.
 	//
 	// Note that currently the application cannot be automatically restarted on Windows
@@ -77,6 +80,9 @@ type Config struct {
 	// TypeScript declarations file.
 	//
 	// If not set it fallbacks to "pb_data".
+	//
+	// Note: Avoid using the same directory as the HooksDir when HooksWatch is enabled
+	// to prevent unnecessary app restarts when the types file is initially created.
 	TypesDir string
 }
 
@@ -85,7 +91,12 @@ type Config struct {
 //
 // Example usage:
 //
-//	jsvm.MustRegister(app, jsvm.Config{})
+//	jsvm.MustRegister(app, jsvm.Config{
+//		OnInit: func(vm *goja.Runtime) {
+//			// register custom bindings
+//			vm.Set("myCustomVar", 123)
+//		},
+//	})
 func MustRegister(app core.App, config Config) {
 	if err := Register(app, config); err != nil {
 		panic(err)
@@ -116,11 +127,16 @@ func Register(app core.App, config Config) error {
 		p.config.TypesDir = app.DataDir()
 	}
 
-	p.app.OnAfterBootstrap().Add(func(e *core.BootstrapEvent) error {
-		// always update the app types on start to ensure that
-		// the user has the latest generated declarations
-		if err := p.saveTypesFile(); err != nil {
-			color.Yellow("Unable to save app types file: %v", err)
+	p.app.OnBootstrap().BindFunc(func(e *core.BootstrapEvent) error {
+		err := e.Next()
+		if err != nil {
+			return err
+		}
+
+		// ensure that the user has the latest types declaration
+		err = p.refreshTypesFile()
+		if err != nil {
+			color.Yellow("Unable to refresh app types file: %v", err)
 		}
 
 		return nil
@@ -154,20 +170,26 @@ func (p *plugin) registerMigrations() error {
 
 	for file, content := range files {
 		vm := goja.New()
+
 		registry.Enable(vm)
 		console.Enable(vm)
 		process.Enable(vm)
+		buffer.Enable(vm)
+
 		baseBinds(vm)
 		dbxBinds(vm)
-		tokensBinds(vm)
 		securityBinds(vm)
 		osBinds(vm)
 		filepathBinds(vm)
 		httpClientBinds(vm)
 
-		vm.Set("migrate", func(up, down func(db dbx.Builder) error) {
-			m.AppMigrations.Register(up, down, file)
+		vm.Set("migrate", func(up, down func(txApp core.App) error) {
+			core.AppMigrations.Register(up, down, file)
 		})
+
+		if p.config.OnInit != nil {
+			p.config.OnInit(vm)
+		}
 
 		_, err := vm.RunString(string(content))
 		if err != nil {
@@ -206,7 +228,7 @@ func (p *plugin) registerHooks() error {
 	// initialize the hooks dir watcher
 	if p.config.HooksWatch {
 		if err := p.watchHooks(); err != nil {
-			return err
+			color.Yellow("Unable to init hooks watcher: %v", err)
 		}
 	}
 
@@ -220,9 +242,10 @@ func (p *plugin) registerHooks() error {
 		return err
 	}
 
-	p.app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
-		e.Router.HTTPErrorHandler = p.normalizeServeExceptions(e.Router.HTTPErrorHandler)
-		return nil
+	p.app.OnServe().BindFunc(func(e *core.ServeEvent) error {
+		e.Router.BindFunc(p.normalizeServeExceptions)
+
+		return e.Next()
 	})
 
 	// safe to be shared across multiple vms
@@ -233,11 +256,11 @@ func (p *plugin) registerHooks() error {
 		requireRegistry.Enable(vm)
 		console.Enable(vm)
 		process.Enable(vm)
+		buffer.Enable(vm)
 
 		baseBinds(vm)
 		dbxBinds(vm)
 		filesystemBinds(vm)
-		tokensBinds(vm)
 		securityBinds(vm)
 		osBinds(vm)
 		filepathBinds(vm)
@@ -249,6 +272,10 @@ func (p *plugin) registerHooks() error {
 		vm.Set("$app", p.app)
 		vm.Set("$template", templateRegistry)
 		vm.Set("__hooks", absHooksDir)
+
+		if p.config.OnInit != nil {
+			p.config.OnInit(vm)
+		}
 	}
 
 	// initiliaze the executor vms
@@ -289,32 +316,17 @@ func (p *plugin) registerHooks() error {
 	return nil
 }
 
-// normalizeExceptions wraps the provided error handler and returns a new one
-// with extracted goja exception error value for consistency when throwing or returning errors.
-func (p *plugin) normalizeServeExceptions(oldErrorHandler echo.HTTPErrorHandler) echo.HTTPErrorHandler {
-	return func(c echo.Context, err error) {
-		defer func() {
-			oldErrorHandler(c, err)
-		}()
+// normalizeExceptions registers a global error handler that
+// wraps the extracted goja exception error value for consistency
+// when throwing or returning errors.
+func (p *plugin) normalizeServeExceptions(e *core.RequestEvent) error {
+	err := e.Next()
 
-		if err == nil || c.Response().Committed {
-			return // no error or already committed
-		}
-
-		jsException, ok := err.(*goja.Exception)
-		if !ok {
-			return // no exception
-		}
-
-		switch v := jsException.Value().Export().(type) {
-		case error:
-			err = v
-		case map[string]any: // goja.GoError
-			if vErr, ok := v["value"].(error); ok {
-				err = vErr
-			}
-		}
+	if err == nil || e.Written() {
+		return err // no error or already committed
 	}
+
+	return normalizeException(err)
 }
 
 // watchHooks initializes a hooks file watcher that will restart the
@@ -322,11 +334,21 @@ func (p *plugin) normalizeServeExceptions(oldErrorHandler echo.HTTPErrorHandler)
 //
 // This method does nothing if the hooks directory is missing.
 func (p *plugin) watchHooks() error {
-	if _, err := os.Stat(p.config.HooksDir); err != nil {
+	watchDir := p.config.HooksDir
+
+	hooksDirInfo, err := os.Lstat(p.config.HooksDir)
+	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil // no hooks dir to watch
 		}
 		return err
+	}
+
+	if hooksDirInfo.Mode()&os.ModeSymlink == os.ModeSymlink {
+		watchDir, err = filepath.EvalSymlinks(p.config.HooksDir)
+		if err != nil {
+			return fmt.Errorf("failed to resolve hooksDir symink: %w", err)
+		}
 	}
 
 	watcher, err := fsnotify.NewWatcher()
@@ -343,12 +365,12 @@ func (p *plugin) watchHooks() error {
 		}
 	}
 
-	p.app.OnTerminate().Add(func(e *core.TerminateEvent) error {
+	p.app.OnTerminate().BindFunc(func(e *core.TerminateEvent) error {
 		watcher.Close()
 
 		stopDebounceTimer()
 
-		return nil
+		return e.Next()
 	})
 
 	// start listening for events.
@@ -387,9 +409,9 @@ func (p *plugin) watchHooks() error {
 	// add directories to watch
 	//
 	// @todo replace once recursive watcher is added (https://github.com/fsnotify/fsnotify/issues/18)
-	dirsErr := filepath.Walk(p.config.HooksDir, func(path string, info fs.FileInfo, err error) error {
-		// ignore hidden directories and node_modules
-		if !info.IsDir() || info.Name() == "node_modules" || strings.HasPrefix(info.Name(), ".") {
+	dirsErr := filepath.WalkDir(watchDir, func(path string, entry fs.DirEntry, err error) error {
+		// ignore hidden directories, node_modules, symlinks, sockets, etc.
+		if !entry.IsDir() || entry.Name() == "node_modules" || strings.HasPrefix(entry.Name(), ".") {
 			return nil
 		}
 
@@ -423,8 +445,8 @@ func (p *plugin) relativeTypesPath(basepath string) string {
 	return rel
 }
 
-// saveTypesFile saves the embedded TS declarations as a file on the disk.
-func (p *plugin) saveTypesFile() error {
+// refreshTypesFile saves the embedded TS declarations as a file on the disk.
+func (p *plugin) refreshTypesFile() error {
 	fullPath := p.fullTypesPath()
 
 	// ensure that the types directory exists
@@ -439,11 +461,20 @@ func (p *plugin) saveTypesFile() error {
 		return err
 	}
 
-	if err := os.WriteFile(fullPath, data, 0644); err != nil {
-		return err
+	// read the first timestamp line of the old file (if exists) and compare it to the embedded one
+	// (note: ignore errors to allow always overwriting the file if it is invalid)
+	existingFile, err := os.Open(fullPath)
+	if err == nil {
+		timestamp := make([]byte, 13)
+		io.ReadFull(existingFile, timestamp)
+		existingFile.Close()
+
+		if len(data) >= len(timestamp) && bytes.Equal(data[:13], timestamp) {
+			return nil // nothing new to save
+		}
 	}
 
-	return nil
+	return os.WriteFile(fullPath, data, 0644)
 }
 
 // prependToEmptyFile prepends the specified text to an empty file.

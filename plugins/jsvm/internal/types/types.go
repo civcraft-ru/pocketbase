@@ -1,12 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/jsvm"
@@ -69,9 +71,9 @@ declare function cronRemove(jobId: string): void;
  * Example:
  *
  * ` + "```" + `js
- * routerAdd("GET", "/hello", (c) => {
- *     return c.json(200, {"message": "Hello!"})
- * }, $apis.requireAdminOrRecordAuth())
+ * routerAdd("GET", "/hello", (e) => {
+ *     return e.json(200, {"message": "Hello!"})
+ * }, $apis.requireAuth())
  * ` + "```" + `
  *
  * _Note that this method is available only in pb_hooks context._
@@ -81,8 +83,8 @@ declare function cronRemove(jobId: string): void;
 declare function routerAdd(
   method: string,
   path: string,
-  handler: echo.HandlerFunc,
-  ...middlewares: Array<string|echo.MiddlewareFunc>,
+  handler: (e: core.RequestEvent) => void,
+  ...middlewares: Array<string|((e: core.RequestEvent) => void)|Middleware>,
 ): void;
 
 /**
@@ -92,11 +94,9 @@ declare function routerAdd(
  * Example:
  *
  * ` + "```" + `js
- * routerUse((next) => {
- *     return (c) => {
- *         console.log(c.Path())
- *         return next(c)
- *     }
+ * routerUse((e) => {
+ *   console.log(e.request.url.path)
+ *   return e.next()
  * })
  * ` + "```" + `
  *
@@ -104,34 +104,7 @@ declare function routerAdd(
  *
  * @group PocketBase
  */
-declare function routerUse(...middlewares: Array<string|echo.MiddlewareFunc>): void;
-
-/**
- * RouterPre registers one or more global middlewares that are executed
- * BEFORE the router processes the request. It is usually used for making
- * changes to the request properties, for example, adding or removing
- * a trailing slash or adding segments to a path so it matches a route.
- *
- * NB! Since the router will not have processed the request yet,
- * middlewares registered at this level won't have access to any path
- * related APIs from echo.Context.
- *
- * Example:
- *
- * ` + "```" + `js
- * routerPre((next) => {
- *     return (c) => {
- *         console.log(c.request().url)
- *         return next(c)
- *     }
- * })
- * ` + "```" + `
- *
- * _Note that this method is available only in pb_hooks context._
- *
- * @group PocketBase
- */
-declare function routerPre(...middlewares: Array<string|echo.MiddlewareFunc>): void;
+declare function routerUse(...middlewares: Array<string|((e: core.RequestEvent) => void)|Middleware>): void;
 
 // -------------------------------------------------------------------
 // baseBinds
@@ -149,7 +122,7 @@ declare var __hooks: string
 //
 // See https://www.typescriptlang.org/docs/handbook/2/mapped-types.html#key-remapping-via-as
 type excludeHooks<Type> = {
-    [Property in keyof Type as Exclude<Property, ` + "`on${string}`" + `>]: Type[Property]
+    [Property in keyof Type as Exclude<Property, ` + "`on${string}`" + `|'cron'>]: Type[Property]
 };
 
 // core.App without the on* hook methods
@@ -192,22 +165,48 @@ declare var $app: PocketBase
 declare var $template: template.Registry
 
 /**
- * readerToString reads the content of the specified io.Reader until
- * EOF or maxBytes are reached.
+ * This method is superseded by toString.
  *
- * If maxBytes is not specified it will read up to 32MB.
+ * @deprecated
+ * @group PocketBase
+ */
+declare function readerToString(reader: any, maxBytes?: number): string;
+
+/**
+ * toString stringifies the specified value.
  *
- * Note that after this call the reader can't be used anymore.
+ * Support optional second maxBytes argument to limit the max read bytes
+ * when the value is a io.Reader (default to 32MB).
+ *
+ * Types that don't have explicit string representation are json serialized.
  *
  * Example:
  *
  * ` + "```" + `js
- * const rawBody = readerToString(c.request().body)
+ * // io.Reader
+ * const ex1 = toString(e.request.body)
+ *
+ * // slice of bytes ("hello")
+ * const ex2 = toString([104 101 108 108 111])
  * ` + "```" + `
  *
  * @group PocketBase
  */
-declare function readerToString(reader: any, maxBytes?: number): string;
+declare function toString(val: any, maxBytes?: number): string;
+
+/**
+ * sleep pauses the current goroutine for at least the specified user duration (in ms).
+ * A zero or negative duration returns immediately.
+ *
+ * Example:
+ *
+ * ` + "```" + `js
+ * sleep(250) // sleeps for 250ms
+ * ` + "```" + `
+ *
+ * @group PocketBase
+ */
+declare function sleep(milliseconds: number): void;
 
 /**
  * arrayOf creates a placeholder array of the specified models.
@@ -218,7 +217,7 @@ declare function readerToString(reader: any, maxBytes?: number): string;
  * ` + "```" + `js
  * const records = arrayOf(new Record)
  *
- * $app.dao().recordQuery("articles").limit(10).all(records)
+ * $app.recordQuery("articles").limit(10).all(records)
  * ` + "```" + `
  *
  * @group PocketBase
@@ -228,15 +227,18 @@ declare function arrayOf<T>(model: T): Array<T>;
 /**
  * DynamicModel creates a new dynamic model with fields from the provided data shape.
  *
+ * Note that in order to use 0 as double/float initialization number you have to use negative zero (` + "`-0`" + `).
+ *
  * Example:
  *
  * ` + "```" + `js
  * const model = new DynamicModel({
- *     name:  ""
- *     age:    0,
- *     active: false,
- *     roles:  [],
- *     meta:   {}
+ *     name:       ""
+ *     age:        0,  // int64
+ *     totalSpent: -0, // float64
+ *     active:     false,
+ *     roles:      [],
+ *     meta:       {}
  * })
  * ` + "```" + `
  *
@@ -246,11 +248,38 @@ declare class DynamicModel {
   constructor(shape?: { [key:string]: any })
 }
 
+interface Context extends context.Context{} // merge
+/**
+ * Context creates a new empty Go context.Context.
+ *
+ * This is usually used as part of some Go transitive bindings.
+ *
+ * Example:
+ *
+ * ` + "```" + `js
+ * const blank = new Context()
+ *
+ * // with single key-value pair
+ * const base = new Context(null, "a", 123)
+ * console.log(base.value("a")) // 123
+ *
+ * // extend with additional key-value pair
+ * const sub = new Context(base, "b", 456)
+ * console.log(sub.value("a")) // 123
+ * console.log(sub.value("b")) // 456
+ * ` + "```" + `
+ *
+ * @group PocketBase
+ */
+declare class Context implements context.Context {
+  constructor(parentCtx?: Context, key?: any, value?: any)
+}
+
 /**
  * Record model class.
  *
  * ` + "```" + `js
- * const collection = $app.dao().findCollectionByNameOrId("article")
+ * const collection = $app.findCollectionByNameOrId("article")
  *
  * const record = new Record(collection, {
  *     title: "Lorem ipsum"
@@ -263,28 +292,31 @@ declare class DynamicModel {
  * @group PocketBase
  */
 declare const Record: {
-  new(collection?: models.Collection, data?: { [key:string]: any }): models.Record
+  new(collection?: core.Collection, data?: { [key:string]: any }): core.Record
 
   // note: declare as "newable" const due to conflict with the Record TS utility type
 }
 
-interface Collection extends models.Collection{} // merge
+interface Collection extends core.Collection{
+  type: "base" | "view" | "auth"
+} // merge
 /**
  * Collection model class.
  *
  * ` + "```" + `js
  * const collection = new Collection({
- *     name:       "article",
  *     type:       "base",
+ *     name:       "article",
  *     listRule:   "@request.auth.id != '' || status = 'public'",
  *     viewRule:   "@request.auth.id != '' || status = 'public'",
  *     deleteRule: "@request.auth.id != ''",
- *     schema: [
+ *     fields: [
  *         {
  *             name: "title",
  *             type: "text",
  *             required: true,
- *             options: { min: 6, max: 100 },
+ *             min: 6,
+ *             max: 100,
  *         },
  *         {
  *             name: "description",
@@ -296,44 +328,158 @@ interface Collection extends models.Collection{} // merge
  *
  * @group PocketBase
  */
-declare class Collection implements models.Collection {
-  constructor(data?: Partial<models.Collection>)
+declare class Collection implements core.Collection {
+  constructor(data?: Partial<Collection>)
 }
 
-interface Admin extends models.Admin{} // merge
+interface FieldsList extends core.FieldsList{} // merge
 /**
- * Admin model class.
- *
- * ` + "```" + `js
- * const admin = new Admin()
- * admin.email = "test@example.com"
- * admin.setPassword(1234567890)
- * ` + "```" + `
+ * FieldsList model class, usually used to define the Collection.fields.
  *
  * @group PocketBase
  */
-declare class Admin implements models.Admin {
-  constructor(data?: Partial<models.Admin>)
+declare class FieldsList implements core.FieldsList {
+  constructor(data?: Partial<core.FieldsList>)
 }
 
-interface Schema extends schema.Schema{} // merge
+interface Field extends core.Field{} // merge
 /**
- * Schema model class, usually used to define the Collection.schema field.
+ * Field model class, usually used as part of the FieldsList model.
  *
  * @group PocketBase
  */
-declare class Schema implements schema.Schema {
-  constructor(data?: Partial<schema.Schema>)
+declare class Field implements core.Field {
+  constructor(data?: Partial<core.Field>)
 }
 
-interface SchemaField extends schema.SchemaField{} // merge
+interface NumberField extends core.NumberField{} // merge
 /**
- * SchemaField model class, usually used as part of the Schema model.
+ * {@inheritDoc core.NumberField}
  *
  * @group PocketBase
  */
-declare class SchemaField implements schema.SchemaField {
-  constructor(data?: Partial<schema.SchemaField>)
+declare class NumberField implements core.NumberField {
+  constructor(data?: Partial<core.NumberField>)
+}
+
+interface BoolField extends core.BoolField{} // merge
+/**
+ * {@inheritDoc core.BoolField}
+ *
+ * @group PocketBase
+ */
+declare class BoolField implements core.BoolField {
+  constructor(data?: Partial<core.BoolField>)
+}
+
+interface TextField extends core.TextField{} // merge
+/**
+ * {@inheritDoc core.TextField}
+ *
+ * @group PocketBase
+ */
+declare class TextField implements core.TextField {
+  constructor(data?: Partial<core.TextField>)
+}
+
+interface URLField extends core.URLField{} // merge
+/**
+ * {@inheritDoc core.URLField}
+ *
+ * @group PocketBase
+ */
+declare class URLField implements core.URLField {
+  constructor(data?: Partial<core.URLField>)
+}
+
+interface EmailField extends core.EmailField{} // merge
+/**
+ * {@inheritDoc core.EmailField}
+ *
+ * @group PocketBase
+ */
+declare class EmailField implements core.EmailField {
+  constructor(data?: Partial<core.EmailField>)
+}
+
+interface EditorField extends core.EditorField{} // merge
+/**
+ * {@inheritDoc core.EditorField}
+ *
+ * @group PocketBase
+ */
+declare class EditorField implements core.EditorField {
+  constructor(data?: Partial<core.EditorField>)
+}
+
+interface PasswordField extends core.PasswordField{} // merge
+/**
+ * {@inheritDoc core.PasswordField}
+ *
+ * @group PocketBase
+ */
+declare class PasswordField implements core.PasswordField {
+  constructor(data?: Partial<core.PasswordField>)
+}
+
+interface DateField extends core.DateField{} // merge
+/**
+ * {@inheritDoc core.DateField}
+ *
+ * @group PocketBase
+ */
+declare class DateField implements core.DateField {
+  constructor(data?: Partial<core.DateField>)
+}
+
+interface AutodateField extends core.AutodateField{} // merge
+/**
+ * {@inheritDoc core.AutodateField}
+ *
+ * @group PocketBase
+ */
+declare class AutodateField implements core.AutodateField {
+  constructor(data?: Partial<core.AutodateField>)
+}
+
+interface JSONField extends core.JSONField{} // merge
+/**
+ * {@inheritDoc core.JSONField}
+ *
+ * @group PocketBase
+ */
+declare class JSONField implements core.JSONField {
+  constructor(data?: Partial<core.JSONField>)
+}
+
+interface RelationField extends core.RelationField{} // merge
+/**
+ * {@inheritDoc core.RelationField}
+ *
+ * @group PocketBase
+ */
+declare class RelationField implements core.RelationField {
+  constructor(data?: Partial<core.RelationField>)
+}
+
+interface SelectField extends core.SelectField{} // merge
+/**
+ * {@inheritDoc core.SelectField}
+ *
+ * @group PocketBase
+ */
+declare class SelectField implements core.SelectField {
+  constructor(data?: Partial<core.SelectField>)
+}
+
+interface FileField extends core.FileField{} // merge
+/**
+ * {@inheritDoc core.FileField}
+ *
+ * @group PocketBase
+ */
+declare class FileField implements core.FileField {
+  constructor(data?: Partial<core.FileField>)
 }
 
 interface MailerMessage extends mailer.Message{} // merge
@@ -381,31 +527,56 @@ declare class Command implements cobra.Command {
   constructor(cmd?: Partial<cobra.Command>)
 }
 
-interface RequestInfo extends models.RequestInfo{} // merge
 /**
- * RequestInfo defines a single models.RequestInfo instance, usually used
+ * RequestInfo defines a single core.RequestInfo instance, usually used
  * as part of various filter checks.
  *
  * Example:
  *
  * ` + "```" + `js
- * const authRecord = $app.dao().findAuthRecordByEmail("users", "test@example.com")
+ * const authRecord = $app.findAuthRecordByEmail("users", "test@example.com")
  *
  * const info = new RequestInfo({
- *     authRecord: authRecord,
- *     data:       {"name": 123},
- *     headers:    {"x-token": "..."},
+ *     auth:    authRecord,
+ *     body:    {"name": 123},
+ *     headers: {"x-token": "..."},
  * })
  *
- * const record = $app.dao().findFirstRecordByData("articles", "slug", "hello")
+ * const record = $app.findFirstRecordByData("articles", "slug", "hello")
  *
- * const canAccess = $app.dao().canAccessRecord(record, info, "@request.auth.id != '' && @request.data.name = 123")
+ * const canAccess = $app.canAccessRecord(record, info, "@request.auth.id != '' && @request.body.name = 123")
  * ` + "```" + `
  *
  * @group PocketBase
  */
-declare class RequestInfo implements models.RequestInfo {
-  constructor(date?: Partial<models.RequestInfo>)
+declare const RequestInfo: {
+  new(info?: Partial<core.RequestInfo>): core.RequestInfo
+
+ // note: declare as "newable" const due to conflict with the RequestInfo TS node type
+}
+
+/**
+ * Middleware defines a single request middleware handler.
+ *
+ * This class is usually used when you want to explicitly specify a priority to your custom route middleware.
+ *
+ * Example:
+ *
+ * ` + "```" + `js
+ * routerUse(new Middleware((e) => {
+ *   console.log(e.request.url.path)
+ *   return e.next()
+ * }, -10))
+ * ` + "```" + `
+ *
+ * @group PocketBase
+ */
+declare class Middleware {
+  constructor(
+    func: string|((e: core.RequestEvent) => void),
+    priority?: number,
+    id?: string,
+  )
 }
 
 interface DateTime extends types.DateTime{} // merge
@@ -429,7 +600,7 @@ declare class DateTime implements types.DateTime {
 interface ValidationError extends ozzo_validation.Error{} // merge
 /**
  * ValidationError defines a single formatted data validation error,
- * usually used as part of a error response.
+ * usually used as part of an error response.
  *
  * ` + "```" + `js
  * new ValidationError("invalid_title", "Title is not valid")
@@ -439,15 +610,6 @@ interface ValidationError extends ozzo_validation.Error{} // merge
  */
 declare class ValidationError implements ozzo_validation.Error {
   constructor(code?: string, message?: string)
-}
-
-interface Dao extends daos.Dao{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class Dao implements daos.Dao {
-  constructor(concurrentDB?: dbx.Builder, nonconcurrentDB?: dbx.Builder)
 }
 
 interface Cookie extends http.Cookie{} // merge
@@ -536,26 +698,20 @@ declare namespace $dbx {
 }
 
 // -------------------------------------------------------------------
-// tokensBinds
+// mailsBinds
 // -------------------------------------------------------------------
 
 /**
- * ` + "`" + `$tokens` + "`" + ` defines high level helpers to generate
- * various admins and auth records tokens (auth, forgotten password, etc.).
- *
- * For more control over the generated token, you can check ` + "`" + `$security` + "`" + `.
+ * ` + "`" + `$mails` + "`" + ` defines helpers to send common
+ * auth records emails like verification, password reset, etc.
  *
  * @group PocketBase
  */
-declare namespace $tokens {
-  let adminAuthToken:           tokens.newAdminAuthToken
-  let adminResetPasswordToken:  tokens.newAdminResetPasswordToken
-  let adminFileToken:           tokens.newAdminFileToken
-  let recordAuthToken:          tokens.newRecordAuthToken
-  let recordVerifyToken:        tokens.newRecordVerifyToken
-  let recordResetPasswordToken: tokens.newRecordResetPasswordToken
-  let recordChangeEmailToken:   tokens.newRecordChangeEmailToken
-  let recordFileToken:          tokens.newRecordFileToken
+declare namespace $mails {
+  let sendRecordPasswordReset: mails.sendRecordPasswordReset
+  let sendRecordVerification:  mails.sendRecordVerification
+  let sendRecordChangeEmail:   mails.sendRecordChangeEmail
+  let sendRecordOTP:           mails.sendRecordOTP
 }
 
 // -------------------------------------------------------------------
@@ -571,11 +727,9 @@ declare namespace $tokens {
 declare namespace $security {
   let randomString:                   security.randomString
   let randomStringWithAlphabet:       security.randomStringWithAlphabet
+  let randomStringByRegex:            security.randomStringByRegex
   let pseudorandomString:             security.pseudorandomString
   let pseudorandomStringWithAlphabet: security.pseudorandomStringWithAlphabet
-  let parseUnverifiedJWT:             security.parseUnverifiedJWT
-  let parseJWT:                       security.parseJWT
-  let createJWT:                      security.newJWT
   let encrypt:                        security.encrypt
   let decrypt:                        security.decrypt
   let hs256:                          security.hs256
@@ -584,6 +738,21 @@ declare namespace $security {
   let md5:                            security.md5
   let sha256:                         security.sha256
   let sha512:                         security.sha512
+
+  /**
+   * {@inheritDoc security.newJWT}
+   */
+  export function createJWT(payload: { [key:string]: any }, signingKey: string, secDuration: number): string
+
+  /**
+   * {@inheritDoc security.parseUnverifiedJWT}
+   */
+  export function parseUnverifiedJWT(token: string): _TygojaDict
+
+  /**
+   * {@inheritDoc security.parseJWT}
+   */
+  export function parseJWT(token: string, verificationKey: string): _TygojaDict
 }
 
 // -------------------------------------------------------------------
@@ -600,6 +769,22 @@ declare namespace $filesystem {
   let fileFromPath:      filesystem.newFileFromPath
   let fileFromBytes:     filesystem.newFileFromBytes
   let fileFromMultipart: filesystem.newFileFromMultipart
+
+  /**
+   * fileFromURL creates a new File from the provided url by
+   * downloading the resource and creating a BytesReader.
+   *
+   * Example:
+   *
+   * ` + "```" + `js
+   * // with default max timeout of 120sec
+   * const file1 = $filesystem.fileFromURL("https://...")
+   *
+   * // with custom timeout of 15sec
+   * const file2 = $filesystem.fileFromURL("https://...", 15)
+   * ` + "```" + `
+   */
+  export function fileFromURL(url: string, secTimeout?: number): filesystem.File
 }
 
 // -------------------------------------------------------------------
@@ -656,12 +841,16 @@ declare namespace $os {
    * const cmd = $os.cmd('ls', '-sl')
    *
    * // execute the command and return its standard output as string
-   * const output = String.fromCharCode(...cmd.output());
+   * const output = toString(cmd.output());
    * ` + "```" + `
    */
   export let cmd: exec.command
 
-  export let args:      os.args
+  /**
+   * Args hold the command-line arguments, starting with the program name.
+   */
+  export let args: Array<string>
+
   export let exit:      os.exit
   export let getenv:    os.getenv
   export let dirFS:     os.dirFS
@@ -682,42 +871,6 @@ declare namespace $os {
 // formsBinds
 // -------------------------------------------------------------------
 
-interface AdminLoginForm extends forms.AdminLogin{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class AdminLoginForm implements forms.AdminLogin {
-  constructor(app: CoreApp)
-}
-
-interface AdminPasswordResetConfirmForm extends forms.AdminPasswordResetConfirm{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class AdminPasswordResetConfirmForm implements forms.AdminPasswordResetConfirm {
-  constructor(app: CoreApp)
-}
-
-interface AdminPasswordResetRequestForm extends forms.AdminPasswordResetRequest{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class AdminPasswordResetRequestForm implements forms.AdminPasswordResetRequest {
-  constructor(app: CoreApp)
-}
-
-interface AdminUpsertForm extends forms.AdminUpsert{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class AdminUpsertForm implements forms.AdminUpsert {
-  constructor(app: CoreApp, admin: models.Admin)
-}
-
 interface AppleClientSecretCreateForm extends forms.AppleClientSecretCreate{} // merge
 /**
  * @inheritDoc
@@ -727,119 +880,13 @@ declare class AppleClientSecretCreateForm implements forms.AppleClientSecretCrea
   constructor(app: CoreApp)
 }
 
-interface CollectionUpsertForm extends forms.CollectionUpsert{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class CollectionUpsertForm implements forms.CollectionUpsert {
-  constructor(app: CoreApp, collection: models.Collection)
-}
-
-interface CollectionsImportForm extends forms.CollectionsImport{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class CollectionsImportForm implements forms.CollectionsImport {
-  constructor(app: CoreApp)
-}
-
-interface RealtimeSubscribeForm extends forms.RealtimeSubscribe{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class RealtimeSubscribeForm implements forms.RealtimeSubscribe {}
-
-interface RecordEmailChangeConfirmForm extends forms.RecordEmailChangeConfirm{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class RecordEmailChangeConfirmForm implements forms.RecordEmailChangeConfirm {
-  constructor(app: CoreApp, collection: models.Collection)
-}
-
-interface RecordEmailChangeRequestForm extends forms.RecordEmailChangeRequest{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class RecordEmailChangeRequestForm implements forms.RecordEmailChangeRequest {
-  constructor(app: CoreApp, record: models.Record)
-}
-
-interface RecordOAuth2LoginForm extends forms.RecordOAuth2Login{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class RecordOAuth2LoginForm implements forms.RecordOAuth2Login {
-  constructor(app: CoreApp, collection: models.Collection, optAuthRecord?: models.Record)
-}
-
-interface RecordPasswordLoginForm extends forms.RecordPasswordLogin{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class RecordPasswordLoginForm implements forms.RecordPasswordLogin {
-  constructor(app: CoreApp, collection: models.Collection)
-}
-
-interface RecordPasswordResetConfirmForm extends forms.RecordPasswordResetConfirm{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class RecordPasswordResetConfirmForm implements forms.RecordPasswordResetConfirm {
-  constructor(app: CoreApp, collection: models.Collection)
-}
-
-interface RecordPasswordResetRequestForm extends forms.RecordPasswordResetRequest{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class RecordPasswordResetRequestForm implements forms.RecordPasswordResetRequest {
-  constructor(app: CoreApp, collection: models.Collection)
-}
-
 interface RecordUpsertForm extends forms.RecordUpsert{} // merge
 /**
  * @inheritDoc
  * @group PocketBase
  */
 declare class RecordUpsertForm implements forms.RecordUpsert {
-  constructor(app: CoreApp, record: models.Record)
-}
-
-interface RecordVerificationConfirmForm extends forms.RecordVerificationConfirm{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class RecordVerificationConfirmForm implements forms.RecordVerificationConfirm {
-  constructor(app: CoreApp, collection: models.Collection)
-}
-
-interface RecordVerificationRequestForm extends forms.RecordVerificationRequest{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class RecordVerificationRequestForm implements forms.RecordVerificationRequest {
-  constructor(app: CoreApp, collection: models.Collection)
-}
-
-interface SettingsUpsertForm extends forms.SettingsUpsert{} // merge
-/**
- * @inheritDoc
- * @group PocketBase
- */
-declare class SettingsUpsertForm implements forms.SettingsUpsert {
-  constructor(app: CoreApp)
+  constructor(app: CoreApp, record: core.Record)
 }
 
 interface TestEmailSendForm extends forms.TestEmailSend{} // merge
@@ -864,53 +911,73 @@ declare class TestS3FilesystemForm implements forms.TestS3Filesystem {
 // apisBinds
 // -------------------------------------------------------------------
 
-interface ApiError extends apis.ApiError{} // merge
+interface ApiError extends router.ApiError{} // merge
 /**
  * @inheritDoc
  *
  * @group PocketBase
  */
-declare class ApiError implements apis.ApiError {
+declare class ApiError implements router.ApiError {
   constructor(status?: number, message?: string, data?: any)
 }
 
-interface NotFoundError extends apis.ApiError{} // merge
+interface NotFoundError extends router.ApiError{} // merge
 /**
  * NotFounderor returns 404 ApiError.
  *
  * @group PocketBase
  */
-declare class NotFoundError implements apis.ApiError {
+declare class NotFoundError implements router.ApiError {
   constructor(message?: string, data?: any)
 }
 
-interface BadRequestError extends apis.ApiError{} // merge
+interface BadRequestError extends router.ApiError{} // merge
 /**
  * BadRequestError returns 400 ApiError.
  *
  * @group PocketBase
  */
-declare class BadRequestError implements apis.ApiError {
+declare class BadRequestError implements router.ApiError {
   constructor(message?: string, data?: any)
 }
 
-interface ForbiddenError extends apis.ApiError{} // merge
+interface ForbiddenError extends router.ApiError{} // merge
 /**
  * ForbiddenError returns 403 ApiError.
  *
  * @group PocketBase
  */
-declare class ForbiddenError implements apis.ApiError {
+declare class ForbiddenError implements router.ApiError {
   constructor(message?: string, data?: any)
 }
 
-interface UnauthorizedError extends apis.ApiError{} // merge
+interface UnauthorizedError extends router.ApiError{} // merge
 /**
  * UnauthorizedError returns 401 ApiError.
  *
  * @group PocketBase
  */
-declare class UnauthorizedError implements apis.ApiError {
+declare class UnauthorizedError implements router.ApiError {
+  constructor(message?: string, data?: any)
+}
+
+interface TooManyRequestsError extends router.ApiError{} // merge
+/**
+ * TooManyRequestsError returns 429 ApiError.
+ *
+ * @group PocketBase
+ */
+declare class TooManyRequestsError implements router.ApiError {
+  constructor(message?: string, data?: any)
+}
+
+interface InternalServerError extends router.ApiError{} // merge
+/**
+ * InternalServerError returns 429 ApiError.
+ *
+ * @group PocketBase
+ */
+declare class InternalServerError implements router.ApiError {
   constructor(message?: string, data?: any)
 }
 
@@ -926,23 +993,40 @@ declare namespace $apis {
    * If a file resource is missing and indexFallback is set, the request
    * will be forwarded to the base index.html (useful for SPA).
    */
-  export function staticDirectoryHandler(dir: string, indexFallback: boolean): echo.HandlerFunc
+  export function static(dir: string, indexFallback: boolean): (e: core.RequestEvent) => void
 
-  let requireRecordAuth:         apis.requireRecordAuth
-  let requireAdminAuth:          apis.requireAdminAuth
-  let requireAdminAuthOnlyIfAny: apis.requireAdminAuthOnlyIfAny
-  let requireAdminOrRecordAuth:  apis.requireAdminOrRecordAuth
-  let requireAdminOrOwnerAuth:   apis.requireAdminOrOwnerAuth
-  let activityLogger:            apis.activityLogger
-  let requestInfo:               apis.requestInfo
-  let recordAuthResponse:        apis.recordAuthResponse
-  let enrichRecord:              apis.enrichRecord
-  let enrichRecords:             apis.enrichRecords
+  let requireGuestOnly:              apis.requireGuestOnly
+  let requireAuth:                   apis.requireAuth
+  let requireSuperuserAuth:          apis.requireSuperuserAuth
+  let requireSuperuserOrOwnerAuth:   apis.requireSuperuserOrOwnerAuth
+  let skipSuccessActivityLog:        apis.skipSuccessActivityLog
+  let gzip:                          apis.gzip
+  let bodyLimit:                     apis.bodyLimit
+  let enrichRecord:                  apis.enrichRecord
+  let enrichRecords:                 apis.enrichRecords
+
+  /**
+   * RecordAuthResponse writes standardized json record auth response
+   * into the specified request event.
+   *
+   * The authMethod argument specify the name of the current authentication method (eg. password, oauth2, etc.)
+   * that it is used primarily as an auth identifier during MFA and for login alerts.
+   *
+   * Set authMethod to empty string if you want to ignore the MFA checks and the login alerts
+   * (can be also adjusted additionally via the onRecordAuthRequest hook).
+   */
+  export function recordAuthResponse(e: core.RequestEvent, authRecord: core.Record, authMethod: string, meta?: any): void
 }
 
 // -------------------------------------------------------------------
 // httpClientBinds
 // -------------------------------------------------------------------
+
+// extra FormData overload to prevent TS warnings when used with non File/Blob value.
+interface FormData {
+  append(key:string, value:any): void
+  set(key:string, value:any): void
+}
 
 /**
  * ` + "`" + `$http` + "`" + ` defines common methods for working with HTTP requests.
@@ -957,9 +1041,10 @@ declare namespace $http {
    *
    * ` + "```" + `js
    * const res = $http.send({
-   *     url:    "https://example.com",
-   *     data:   {"title": "test"}
-   *     method: "post",
+   *     method:  "POST",
+   *     url:     "https://example.com",
+   *     body:    JSON.stringify({"title": "test"}),
+   *     headers: { 'Content-Type': 'application/json' }
    * })
    *
    * console.log(res.statusCode) // the response HTTP status code
@@ -971,12 +1056,12 @@ declare namespace $http {
    */
   function send(config: {
     url:      string,
-    body?:    string,
+    body?:    string|FormData,
     method?:  string, // default to "GET"
     headers?: { [key:string]: string },
     timeout?: number, // default to 120
 
-    // deprecated, please use body instead
+    // @deprecated please use body instead
     data?: { [key:string]: any },
   }): {
     statusCode: number,
@@ -999,8 +1084,8 @@ declare namespace $http {
  * @group PocketBase
  */
 declare function migrate(
-  up: (db: dbx.Builder) => void,
-  down?: (db: dbx.Builder) => void
+  up: (txApp: CoreApp) => void,
+  down?: (txApp: CoreApp) => void
 ): void;
 `
 
@@ -1016,8 +1101,9 @@ func main() {
 			"github.com/pocketbase/pocketbase/tools/security":   {"*"},
 			"github.com/pocketbase/pocketbase/tools/filesystem": {"*"},
 			"github.com/pocketbase/pocketbase/tools/template":   {"*"},
-			"github.com/pocketbase/pocketbase/tokens":           {"*"},
+			"github.com/pocketbase/pocketbase/mails":            {"*"},
 			"github.com/pocketbase/pocketbase/apis":             {"*"},
+			"github.com/pocketbase/pocketbase/core":             {"*"},
 			"github.com/pocketbase/pocketbase/forms":            {"*"},
 			"github.com/pocketbase/pocketbase":                  {"*"},
 			"path/filepath":                                     {"*"},
@@ -1031,23 +1117,25 @@ func main() {
 			return mapper.MethodName(nil, reflect.Method{Name: s})
 		},
 		TypeMappings: map[string]string{
-			"crypto.*":    "any",
-			"acme.*":      "any",
-			"autocert.*":  "any",
-			"driver.*":    "any",
-			"reflect.*":   "any",
-			"fmt.*":       "any",
-			"rand.*":      "any",
-			"tls.*":       "any",
-			"asn1.*":      "any",
-			"pkix.*":      "any",
-			"x509.*":      "any",
-			"pflag.*":     "any",
-			"flag.*":      "any",
-			"log.*":       "any",
-			"http.Client": "any",
+			"crypto.*":     "any",
+			"acme.*":       "any",
+			"autocert.*":   "any",
+			"driver.*":     "any",
+			"reflect.*":    "any",
+			"fmt.*":        "any",
+			"rand.*":       "any",
+			"tls.*":        "any",
+			"asn1.*":       "any",
+			"pkix.*":       "any",
+			"x509.*":       "any",
+			"pflag.*":      "any",
+			"flag.*":       "any",
+			"log.*":        "any",
+			"aws.*":        "any",
+			"http.Client":  "any",
+			"mail.Address": "{ address: string; name?: string; }", // prevents the LSP to complain in case no name is provided
 		},
-		Indent:               " ", // use only a single space to reduce slight the size
+		Indent:               " ", // use only a single space to reduce slightly the size
 		WithPackageFunctions: true,
 		Heading:              declarations,
 	})
@@ -1068,6 +1156,10 @@ func main() {
 	result = strings.ReplaceAll(result, "ORIGINAL_CORE_APP", "core.App")
 	result = strings.ReplaceAll(result, "ORIGINAL_POCKETBASE", "pocketbase.PocketBase")
 
+	// prepend a timestamp with the generation time
+	// so that it can be compared without reading the entire file
+	result = fmt.Sprintf("// %d\n%s", time.Now().Unix(), result)
+
 	parentDir := filepath.Dir(filename)
 	typesFile := filepath.Join(parentDir, "generated", "types.d.ts")
 
@@ -1079,7 +1171,7 @@ func main() {
 func hooksDeclarations() string {
 	var result strings.Builder
 
-	excluded := []string{"OnBeforeServe"}
+	excluded := []string{"OnServe"}
 	appType := reflect.TypeOf(struct{ core.App }{})
 	totalMethods := appType.NumMethod()
 
@@ -1093,7 +1185,7 @@ func hooksDeclarations() string {
 
 		withTags := strings.HasPrefix(hookType.String(), "*hook.TaggedHook")
 
-		addMethod, ok := hookType.MethodByName("Add")
+		addMethod, ok := hookType.MethodByName("BindFunc")
 		if !ok {
 			continue
 		}

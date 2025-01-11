@@ -2,6 +2,7 @@ package cron_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 )
 
 func TestNewMoment(t *testing.T) {
+	t.Parallel()
+
 	date, err := time.Parse("2006-01-02 15:04", "2023-05-09 15:20")
 	if err != nil {
 		t.Fatal(err)
@@ -38,6 +41,8 @@ func TestNewMoment(t *testing.T) {
 }
 
 func TestNewSchedule(t *testing.T) {
+	t.Parallel()
+
 	scenarios := []struct {
 		cronExpr       string
 		expectError    bool
@@ -248,30 +253,34 @@ func TestNewSchedule(t *testing.T) {
 	}
 
 	for _, s := range scenarios {
-		schedule, err := cron.NewSchedule(s.cronExpr)
+		t.Run(s.cronExpr, func(t *testing.T) {
+			schedule, err := cron.NewSchedule(s.cronExpr)
 
-		hasErr := err != nil
-		if hasErr != s.expectError {
-			t.Fatalf("[%s] Expected hasErr to be %v, got %v (%v)", s.cronExpr, s.expectError, hasErr, err)
-		}
+			hasErr := err != nil
+			if hasErr != s.expectError {
+				t.Fatalf("Expected hasErr to be %v, got %v (%v)", s.expectError, hasErr, err)
+			}
 
-		if hasErr {
-			continue
-		}
+			if hasErr {
+				return
+			}
 
-		encoded, err := json.Marshal(schedule)
-		if err != nil {
-			t.Fatalf("[%s] Failed to marshalize the result schedule: %v", s.cronExpr, err)
-		}
-		encodedStr := string(encoded)
+			encoded, err := json.Marshal(schedule)
+			if err != nil {
+				t.Fatalf("Failed to marshalize the result schedule: %v", err)
+			}
+			encodedStr := string(encoded)
 
-		if encodedStr != s.expectSchedule {
-			t.Fatalf("[%s] Expected \n%s, \ngot \n%s", s.cronExpr, s.expectSchedule, encodedStr)
-		}
+			if encodedStr != s.expectSchedule {
+				t.Fatalf("Expected \n%s, \ngot \n%s", s.expectSchedule, encodedStr)
+			}
+		})
 	}
 }
 
 func TestScheduleIsDue(t *testing.T) {
+	t.Parallel()
+
 	scenarios := []struct {
 		cronExpr string
 		moment   *cron.Moment
@@ -384,15 +393,17 @@ func TestScheduleIsDue(t *testing.T) {
 	}
 
 	for i, s := range scenarios {
-		schedule, err := cron.NewSchedule(s.cronExpr)
-		if err != nil {
-			t.Fatalf("[%d-%s] Unexpected cron error: %v", i, s.cronExpr, err)
-		}
+		t.Run(fmt.Sprintf("%d-%s", i, s.cronExpr), func(t *testing.T) {
+			schedule, err := cron.NewSchedule(s.cronExpr)
+			if err != nil {
+				t.Fatalf("Unexpected cron error: %v", err)
+			}
 
-		result := schedule.IsDue(s.moment)
+			result := schedule.IsDue(s.moment)
 
-		if result != s.expected {
-			t.Fatalf("[%d-%s] Expected %v, got %v", i, s.cronExpr, s.expected, result)
-		}
+			if result != s.expected {
+				t.Fatalf("Expected %v, got %v", s.expected, result)
+			}
+		})
 	}
 }
